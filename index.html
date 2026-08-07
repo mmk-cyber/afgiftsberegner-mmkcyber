@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Afgiftsberegner — Bilimport & Leasing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #1B2430;
+    --ink-soft: #3D4A5C;
+    --paper: #F7F5F0;
+    --paper-raised: #FFFFFF;
+    --line: #DCD8CC;
+    --brass: #A9793F;
+    --brass-soft: #F0E4D2;
+    --sage: #52766B;
+    --sage-soft: #E3ECE8;
+    --clay: #A3432F;
+    --clay-soft: #F5E3DE;
+    --muted: #8A8577;
+    --radius: 3px;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); line-height:1.55; font-size:15px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:48px 28px 96px;}
+  header.masthead{
+    border-bottom:2px solid var(--ink); padding-bottom:22px; margin-bottom:36px;
+    display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap;
+  }
+  header.masthead .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--brass); margin:0 0 8px;
+  }
+  header.masthead h1{
+    font-family:var(--serif); font-weight:600; font-size:34px; margin:0; letter-spacing:-.01em;
+  }
+  header.masthead .meta{font-family:var(--mono); font-size:12px; color:var(--muted); text-align:right;}
+  .card{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius);
+    padding:26px 28px; margin-bottom:22px;
+  }
+  .card h2{
+    font-family:var(--serif); font-weight:600; font-size:19px; margin:0 0 6px;
+  }
+  .card .sub{color:var(--ink-soft); font-size:13.5px; margin:0 0 20px; max-width:64ch;}
+  label{
+    display:block; font-family:var(--mono); font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:6px;
+  }
+  input[type=text], input[type=number], input[type=url], select, textarea{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--paper); font-family:var(--sans); font-size:14.5px; color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--brass); outline-offset:1px;}
+  .grid{display:grid; gap:16px;}
+  .grid-2{grid-template-columns:1fr 1fr;}
+  .grid-3{grid-template-columns:1fr 1fr 1fr;}
+  .grid-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+  @media (max-width:640px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+  .field{margin-bottom:0;}
+  .seg{display:flex; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  .seg button{
+    flex:1; padding:11px 8px; border:none; background:var(--paper-raised); font-family:var(--sans);
+    font-size:13.5px; font-weight:500; color:var(--ink-soft); cursor:pointer; border-right:1px solid var(--line);
+  }
+  .seg button:last-child{border-right:none;}
+  .seg button.active{background:var(--ink); color:var(--paper);}
+
+  table.comp{width:100%; border-collapse:collapse; font-size:13.5px;}
+  table.comp th{
+    text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); font-weight:500; padding:0 8px 8px 0; border-bottom:1px solid var(--line);
+  }
+  table.comp td{padding:6px 8px 6px 0; vertical-align:middle;}
+  table.comp tr + tr td{border-top:1px solid var(--line);}
+  table.comp input, table.comp select{padding:7px 8px; font-size:13px;}
+  .rowbtn{
+    border:none; background:none; color:var(--clay); font-size:17px; cursor:pointer; line-height:1;
+    width:28px; height:28px; border-radius:var(--radius);
+  }
+  .rowbtn:hover{background:var(--clay-soft);}
+  .addbtn{
+    margin-top:12px; padding:9px 16px; border:1px solid var(--ink); background:var(--paper-raised);
+    color:var(--ink); font-family:var(--sans); font-weight:500; font-size:13px; border-radius:var(--radius); cursor:pointer;
+  }
+  .addbtn:hover{background:var(--ink); color:var(--paper);}
+  .primary{
+    padding:12px 22px; border:none; background:var(--ink); color:var(--paper); font-family:var(--sans);
+    font-weight:600; font-size:14px; border-radius:var(--radius); cursor:pointer;
+  }
+  .primary:hover{background:var(--brass);}
+  .primary.ghost{background:var(--paper-raised); color:var(--ink); border:1px solid var(--ink);}
+  .primary.ghost:hover{background:var(--ink); color:var(--paper);}
+
+  .banner{
+    padding:14px 16px; border-radius:var(--radius); font-size:13.5px; margin-top:16px; border-left:4px solid;
+  }
+  .banner.thin{background:var(--clay-soft); border-color:var(--clay); color:#5C2A1D;}
+  .banner.mild{background:var(--brass-soft); border-color:var(--brass); color:#5C4423;}
+  .banner.ok{background:var(--sage-soft); border-color:var(--sage); color:#2C4038;}
+
+  .resultgrid{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  @media (max-width:760px){.resultgrid{grid-template-columns:1fr;}}
+  .result-card{
+    background:var(--ink); color:var(--paper); border-radius:var(--radius); padding:26px 28px;
+  }
+  .result-card h3{
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:#B8C4D4; margin:0 0 4px; font-weight:500;
+  }
+  .result-card .big{font-family:var(--serif); font-size:36px; font-weight:600; margin:0 0 18px;}
+  .result-card .line{
+    display:flex; justify-content:space-between; font-size:13px; padding:7px 0;
+    border-bottom:1px solid rgba(255,255,255,.12); font-family:var(--mono);
+  }
+  .result-card .line.total{font-weight:700; border-bottom:none; padding-top:12px; font-size:14.5px;}
+  .result-card .line span:first-child{color:#AEB9C6; font-family:var(--sans);}
+
+  .basisnote{
+    font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-top:10px; line-height:1.6;
+  }
+  .footnote{color:var(--muted); font-size:12.5px; margin-top:8px; line-height:1.6;}
+  a{color:var(--brass);}
+
+  .report-only{display:none;}
+
+  @media print{
+    body{background:#fff; font-size:11.5pt;}
+    .wrap{max-width:100%; padding:0;}
+    .no-print{display:none !important;}
+    .report-only{display:block;}
+    .card{border:none; border-bottom:1px solid #ccc; border-radius:0; page-break-inside:avoid; padding:14px 0;}
+    .result-card{background:#fff; color:#000; border:1px solid #000;}
+    .result-card .line{border-bottom:1px solid #ddd;}
+    .result-card .line span:first-child{color:#444;}
+    input, select, textarea{border:none; background:none; padding:2px 0;}
+    .rowbtn, .addbtn{display:none;}
+    header.masthead{border-bottom:2px solid #000;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Dansk registreringsafgift &amp; leasing</p>
+      <h1>Afgiftsberegner</h1>
+    </div>
+    <div class="meta" id="reportDate"></div>
+  </header>
+
+  <div class="card">
+    <h2>Køretøj</h2>
+    <p class="sub">Bilens grunddata. CO2 og alder er afgørende for afgiften — verificér CO2 mod bilens COC-dokument eller producentens officielle tal.</p>
+    <div class="grid grid-2" style="margin-bottom:16px;">
+      <div class="field">
+        <label for="carName">Mærke / model / variant</label>
+        <input type="text" id="carName" placeholder="fx BMW 330i xDrive Touring M Sport">
+      </div>
+      <div class="field">
+        <label for="sourceUrl">Kilde-link (udenlandsk annonce)</label>
+        <input type="url" id="sourceUrl" placeholder="https://...">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>Drivmiddel</label>
+      <div class="seg" id="fuelSeg">
+        <button data-fuel="konventionel" class="active">Benzin / diesel</button>
+        <button data-fuel="phev">Plugin-hybrid</button>
+        <button data-fuel="ev">Elbil</button>
+      </div>
+    </div>
+    <div class="grid grid-4">
+      <div class="field">
+        <label for="co2">CO2 (g/km)</label>
+        <input type="number" id="co2" value="0" min="0">
+      </div>
+      <div class="field">
+        <label for="ageMonths">Alder (mdr.)</label>
+        <input type="number" id="ageMonths" value="0" min="0">
+      </div>
+      <div class="field">
+        <label for="kmStand">Km-stand</label>
+        <input type="number" id="kmStand" value="0" min="0" step="1000">
+      </div>
+      <div class="field" id="co2FieldWrap">
+        <label for="co2Source">CO2-kilde</label>
+        <input type="text" id="co2Source" placeholder="fx BMW.dk, COC-dok.">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Sammenligningsgrundlag — danske biler</h2>
+    <p class="sub">Danske referencer, fundet på Bilbasen/DBA (salgsannoncer) eller bilopslag.nu (allerede afgiftsberegnede biler). Alle priser her er <strong>totalpriser inkl. moms og afgift</strong> — værktøjet tilbageregner selv den afgiftspligtige værdi.</p>
+    <table class="comp">
+      <thead>
+        <tr>
+          <th style="width:16%;">Kilde</th>
+          <th>Beskrivelse</th>
+          <th style="width:13%;">Pris (kr.)</th>
+          <th style="width:11%;">Dato</th>
+          <th style="width:11%;">Km</th>
+          <th style="width:10%;">Link</th>
+          <th style="width:30px;"></th>
+        </tr>
+      </thead>
+      <tbody id="compBody"></tbody>
+    </table>
+    <button class="addbtn no-print" id="addCompBtn" type="button">+ Tilføj sammenligning</button>
+    <div id="confidenceBanner"></div>
+    <div class="basisnote" id="basisNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Leasingforudsætninger</h2>
+    <p class="sub">Bruges kun til leasingberegningen (§3b, forholdsmæssig afgift) — ikke til kontantprisen.</p>
+    <div class="grid grid-4">
+      <div class="field">
+        <label for="months">Leasingperiode (mdr.)</label>
+        <input type="number" id="months" value="36" min="1">
+      </div>
+      <div class="field">
+        <label for="downpct">Udbetaling (%)</label>
+        <input type="number" id="downpct" value="10" min="0" max="100">
+      </div>
+      <div class="field">
+        <label for="rate">Rente, bilfinansiering (%/år)</label>
+        <input type="number" id="rate" value="6" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label for="restRente">Rentetillæg, restafgift (%/år)</label>
+        <input type="number" id="restRente" value="5" min="0" step="0.1">
+      </div>
+    </div>
+    <div class="grid grid-2" style="margin-top:16px;">
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:var(--sans);color:var(--ink);font-size:13.5px;">
+          <input type="checkbox" id="residualAuto" style="width:auto;" checked> Beregn restværdi automatisk
+        </label>
+      </div>
+      <div class="field">
+        <label for="residualDepRate">Antaget værditab (%/år)</label>
+        <input type="number" id="residualDepRate" value="15" min="0" max="50">
+      </div>
+    </div>
+  </div>
+
+  <div class="card no-print">
+    <button class="primary" id="printBtn" type="button">Print / Gem som PDF</button>
+    <span class="footnote" style="margin-left:12px;">Åbner din browsers udskriftsdialog — vælg "Gem som PDF" som printer.</span>
+  </div>
+
+  <div class="resultgrid">
+    <div class="result-card">
+      <h3>Kontant betaling</h3>
+      <div class="big" id="kontantTotal">0 kr.</div>
+
+      <div class="line"><span>Afgiftspligtig værdi (ekskl. afgift)</span><span id="kExAfgift">–</span></div>
+
+      <div class="line" style="opacity:.75;"><span id="kB1Label">25% af de første 76.400 kr.</span><span id="kB1">–</span></div>
+      <div class="line" style="opacity:.75;"><span id="kB2Label">85% af 76.400–237.400 kr.</span><span id="kB2">–</span></div>
+      <div class="line" style="opacity:.75;"><span id="kB3Label">150% over 237.400 kr.</span><span id="kB3">–</span></div>
+      <div class="line"><span>Værdiafgift i alt</span><span id="kValueTax">–</span></div>
+
+      <div class="line" style="opacity:.75;"><span id="kCo2MidLabel">CO2-tillæg, 30–107 g/km (294 kr./g)</span><span id="kCo2Mid">–</span></div>
+      <div class="line" style="opacity:.75;"><span id="kCo2HighLabel">CO2-tillæg, over 107 g/km (1.115 kr./g)</span><span id="kCo2High">–</span></div>
+      <div class="line"><span>CO2-tillæg i alt</span><span id="kCo2">–</span></div>
+
+      <div class="line"><span>Grundafgift (værdi + CO2)</span><span id="kGrund">–</span></div>
+      <div class="line"><span>Standardbundfradrag</span><span id="kStdDeduction">–</span></div>
+      <div class="line"><span>Efter bundfradrag</span><span id="kAfterStd">–</span></div>
+      <div class="line"><span id="kIndfLabel">Indfasningsprocent</span><span id="kIndfPct">–</span></div>
+      <div class="line"><span>Efter indfasning</span><span id="kAfterIndf">–</span></div>
+      <div class="line"><span id="kExtraDedLabel">Ekstra bundfradrag (el/plugin-hybrid)</span><span id="kExtraDed">–</span></div>
+
+      <div class="line total"><span>Registreringsafgift i alt</span><span id="kAfgift">–</span></div>
+      <div class="line total"><span>Total pris i Danmark</span><span id="kTotal">–</span></div>
+    </div>
+    <div class="result-card">
+      <h3>Flexleasing (§3b, forholdsmæssig afgift)</h3>
+      <div class="big" id="leaseTotal">0 kr./md.</div>
+      <div class="line"><span>Bilfinansiering</span><span id="lCarMonthly">–</span></div>
+      <div class="line"><span>Afgift/rente, gnsn. pr. md.</span><span id="lAfgiftMonthly">–</span></div>
+      <div class="line"><span>Restværdi ved periodens udløb</span><span id="lResidual">–</span></div>
+      <div class="line total"><span>Samlet ydelse pr. måned</span><span id="lTotalMonthly">–</span></div>
+    </div>
+  </div>
+
+  <div class="footnote" style="margin-top:24px;">
+    Beregnet efter Skatteministeriets 2026-satser (værditrin 25/85/150%, CO2-tillæg, bundfradrag, indfasning for el/plugin-hybrid). Ikke en officiel beregning — verificér mod Motorstyrelsens egen beregner på motorst.dk, før tallet lægges til grund for en beslutning.
+  </div>
+</div>
+
+<script>
+// ---------------- 2026 satser ----------------
+const RATES = {
+  band1: 76400, band2: 237400,
+  co2Low: 107, co2Mid: 30,
+  co2LowRate: 294, co2MidRate: 587, co2HighRate: 1115,
+  standardDeduction: 25500,
+  indfasning: { konventionel: 1.0, phev: 0.68, ev: 0.40 },
+  extraDeduction: { konventionel: 0, phev: 43000, ev: 161300 }
+};
+let fuel = 'konventionel';
+const fmt = n => Math.round(n).toLocaleString('da-DK') + ' kr.';
+
+function valueTax(value){
+  const b1amt = Math.min(value, RATES.band1);
+  const b2amt = Math.max(0, Math.min(value, RATES.band2) - RATES.band1);
+  const b3amt = Math.max(0, value - RATES.band2);
+  const b1tax = b1amt*0.25, b2tax = b2amt*0.85, b3tax = b3amt*1.5;
+  return { total: b1tax+b2tax+b3tax, b1amt, b2amt, b3amt, b1tax, b2tax, b3tax };
+}
+
+function co2Surcharge(co2, fuelType){
+  if(fuelType === 'ev' || co2 <= RATES.co2Mid) return { total: 0, midAmt: 0, midTax: 0, highAmt: 0, highTax: 0 };
+  const midAmt = Math.max(0, Math.min(co2, RATES.co2Low) - RATES.co2Mid);
+  const highAmt = Math.max(0, co2 - RATES.co2Low);
+  const midTax = midAmt * RATES.co2MidRate;
+  const highTax = highAmt * RATES.co2HighRate;
+  return { total: midTax+highTax, midAmt, midTax, highAmt, highTax };
+}
+
+function computeAfgift(value, co2, fuelType){
+  const vTax = valueTax(value);
+  const c = co2Surcharge(co2, fuelType);
+  const grundafgift = vTax.total + c.total;
+  const afterStd = Math.max(0, grundafgift - RATES.standardDeduction);
+  const indfPct = RATES.indfasning[fuelType];
+  const afterIndf = afterStd * indfPct;
+  const extraDed = RATES.extraDeduction[fuelType];
+  const final = Math.max(0, afterIndf - extraDed);
+  return {
+    valueTax: vTax.total, valueTaxBands: vTax,
+    co2Surcharge: c.total, co2Bands: c,
+    grundafgift,
+    standardDeduction: RATES.standardDeduction, afterStandardDeduction: afterStd,
+    indfasningPct: indfPct, afterIndfasning: afterIndf,
+    extraDeduction: extraDed,
+    final
+  };
+}
+
+function solveExAfgiftValue(totalInclAfgift, co2, fuelType){
+  let lo = 0, hi = totalInclAfgift;
+  for(let i=0; i<60; i++){
+    const mid = (lo+hi)/2;
+    const r = computeAfgift(mid, co2, fuelType);
+    const total = mid + r.final;
+    if(total > totalInclAfgift) hi = mid; else lo = mid;
+  }
+  return (lo+hi)/2;
+}
+
+function forholdsmaessigRate(ageMonths){
+  if(ageMonths < 3) return 0.020;
+  if(ageMonths < 36) return 0.010;
+  return 0.005;
+}
+
+function computeForholdsmaessig(exAfgiftValue, startAgeMonths, leaseMonths, renteTillaegPct){
+  const r = computeAfgift(exAfgiftValue, parseFloat(document.getElementById('co2').value)||0, fuel);
+  const fullTax = r.final;
+  let remaining = fullTax;
+  let totalPaid = 0;
+  for(let m=0; m<leaseMonths; m++){
+    const age = startAgeMonths + m;
+    const rate = forholdsmaessigRate(age);
+    const monthlyBase = remaining * rate;
+    const renteAddon = remaining * (renteTillaegPct/100/12);
+    totalPaid += monthlyBase + renteAddon;
+    remaining = Math.max(0, remaining - monthlyBase);
+  }
+  return { avgMonthly: totalPaid/leaseMonths, totalTaxPaid: totalPaid, restafgiftVedSlut: remaining, fullTax };
+}
+
+function annuityWithBalloon(P, B, annualRatePct, n){
+  const i = annualRatePct/100/12;
+  if(i === 0) return (P-B)/n;
+  return (P - B/Math.pow(1+i,n)) * i / (1 - Math.pow(1+i,-n));
+}
+
+// ---------------- Sammenligningstabel ----------------
+let compRowId = 0;
+function addCompRow(kilde, beskrivelse, pris, dato, km, link){
+  const id = 'c'+(compRowId++);
+  const tr = document.createElement('tr');
+  tr.dataset.rowId = id;
+  tr.innerHTML = `
+    <td><select class="c-kilde">
+      <option${kilde==='Bilbasen'?' selected':''}>Bilbasen</option>
+      <option${kilde==='DBA'?' selected':''}>DBA</option>
+      <option${kilde==='bilopslag.nu'?' selected':''}>bilopslag.nu</option>
+      <option${kilde==='Andet'?' selected':''}>Andet</option>
+    </select></td>
+    <td><input type="text" class="c-beskrivelse" value="${beskrivelse||''}" placeholder="fx årgang/udstyr"></td>
+    <td><input type="number" class="c-pris" value="${pris||''}" step="1000" min="0"></td>
+    <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
+    <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
+    <td><input type="url" class="c-link" value="${link||''}" placeholder="link"></td>
+    <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
+  document.getElementById('compBody').appendChild(tr);
+  tr.querySelectorAll('input, select').forEach(el => el.addEventListener('input', renderAll));
+  tr.querySelector('.rowbtn').addEventListener('click', () => { tr.remove(); renderAll(); });
+}
+
+function getComparisons(){
+  return Array.from(document.querySelectorAll('#compBody tr')).map(tr => ({
+    kilde: tr.querySelector('.c-kilde').value,
+    beskrivelse: tr.querySelector('.c-beskrivelse').value,
+    pris: parseFloat(tr.querySelector('.c-pris').value) || 0,
+    dato: tr.querySelector('.c-dato').value,
+    km: parseFloat(tr.querySelector('.c-km').value) || 0,
+    link: tr.querySelector('.c-link').value,
+  })).filter(c => c.pris > 0);
+}
+
+function deriveMarketValue(comparisons){
+  if(comparisons.length === 0) return { totalIncl: 0, tier: 'none', usedCount: 0, excludedNote: '' };
+  let used = comparisons.slice().sort((a,b)=>a.pris-b.pris);
+  let excludedNote = '';
+  let tier;
+  if(used.length < 3){
+    tier = 'thin';
+  } else if(used.length === 3){
+    tier = 'mild';
+  } else {
+    tier = 'ok';
+    if(used.length >= 5){
+      const dropped = [used[0], used[used.length-1]];
+      used = used.slice(1, -1);
+      excludedNote = `Billigste (${fmt(dropped[0].pris)}) og dyreste (${fmt(dropped[1].pris)}) er set bort fra, jf. Motorstyrelsens praksis.`;
+    }
+  }
+  const totalIncl = used.reduce((s,c)=>s+c.pris,0) / used.length;
+  return { totalIncl, tier, usedCount: used.length, excludedNote };
+}
+
+function renderConfidenceBanner(market, count){
+  const el = document.getElementById('confidenceBanner');
+  const notes = document.getElementById('basisNote');
+  if(count === 0){
+    el.innerHTML = '';
+    notes.textContent = 'Tilføj mindst én sammenligning for at beregne en dansk markedsværdi.';
+    return;
+  }
+  const msgs = {
+    thin: `<div class="banner thin"><strong>${count} sammenligning${count===1?'':'er'} — for tyndt grundlag.</strong> Motorstyrelsens praksis om at se bort fra dyreste/billigste kræver typisk mindst 3-4. Brug med stor forsigtighed.</div>`,
+    mild: `<div class="banner mild"><strong>${count} sammenligninger — brugbart, men stadig et tyndt grundlag.</strong> Flere referencer vil gøre estimatet mere robust.</div>`,
+    ok: `<div class="banner ok"><strong>${count} sammenligninger — rimeligt grundlag.</strong>${market.excludedNote ? ' ' + market.excludedNote : ''}</div>`,
+  };
+  el.innerHTML = msgs[market.tier] || '';
+  notes.textContent = `Gennemsnitlig totalpris (inkl. afgift) blandt de anvendte annoncer: ${fmt(market.totalIncl)}. Denne værdi tilbageregnes til den afgiftspligtige værdi nedenfor.`;
+}
+
+// ---------------- Render ----------------
+function renderAll(){
+  const co2 = parseFloat(document.getElementById('co2').value) || 0;
+  const ageMonths = parseFloat(document.getElementById('ageMonths').value) || 0;
+
+  const comparisons = getComparisons();
+  const market = deriveMarketValue(comparisons);
+  renderConfidenceBanner(market, comparisons.length);
+
+  const exAfgiftValue = market.totalIncl > 0 ? solveExAfgiftValue(market.totalIncl, co2, fuel) : 0;
+
+  // Kontant
+  const r = computeAfgift(exAfgiftValue, co2, fuel);
+  document.getElementById('kExAfgift').textContent = fmt(exAfgiftValue);
+
+  document.getElementById('kB1').textContent = fmt(r.valueTaxBands.b1tax);
+  document.getElementById('kB2').textContent = fmt(r.valueTaxBands.b2tax);
+  document.getElementById('kB3').textContent = fmt(r.valueTaxBands.b3tax);
+  document.getElementById('kValueTax').textContent = fmt(r.valueTax);
+
+  const co2Note = fuel === 'ev' ? ' (elbil — intet CO2-tillæg)' : '';
+  document.getElementById('kCo2MidLabel').textContent = `CO2-tillæg, 30–107 g/km (294 kr./g)${co2Note}`;
+  document.getElementById('kCo2Mid').textContent = fmt(r.co2Bands.midTax);
+  document.getElementById('kCo2High').textContent = fmt(r.co2Bands.highTax);
+  document.getElementById('kCo2').textContent = fmt(r.co2Surcharge);
+
+  document.getElementById('kGrund').textContent = fmt(r.grundafgift);
+  document.getElementById('kStdDeduction').textContent = '−' + fmt(r.standardDeduction);
+  document.getElementById('kAfterStd').textContent = fmt(r.afterStandardDeduction);
+  document.getElementById('kIndfLabel').textContent = `Indfasningsprocent (${fuel === 'ev' ? 'elbil' : fuel === 'phev' ? 'plugin-hybrid' : 'benzin/diesel'})`;
+  document.getElementById('kIndfPct').textContent = Math.round(r.indfasningPct*100) + '%';
+  document.getElementById('kAfterIndf').textContent = fmt(r.afterIndfasning);
+  document.getElementById('kExtraDed').textContent = r.extraDeduction > 0 ? '−' + fmt(r.extraDeduction) : fmt(0);
+
+  document.getElementById('kAfgift').textContent = fmt(r.final);
+  document.getElementById('kTotal').textContent = fmt(exAfgiftValue + r.final);
+  document.getElementById('kontantTotal').textContent = fmt(exAfgiftValue + r.final);
+
+  // Leasing
+  const months = parseFloat(document.getElementById('months').value) || 1;
+  const downPct = parseFloat(document.getElementById('downpct').value) || 0;
+  const rate = parseFloat(document.getElementById('rate').value) || 0;
+  const restRente = parseFloat(document.getElementById('restRente').value) || 0;
+  const autoResidual = document.getElementById('residualAuto').checked;
+  const depRate = parseFloat(document.getElementById('residualDepRate').value) || 0;
+
+  let residual;
+  if(autoResidual){
+    residual = exAfgiftValue * Math.pow(1 - depRate/100, months/12);
+  } else {
+    residual = 0;
+  }
+  const udbetaling = exAfgiftValue * (downPct/100);
+  const financed = exAfgiftValue - udbetaling;
+  const residualTooHigh = residual > financed;
+  const carMonthly = residualTooHigh ? 0 : annuityWithBalloon(financed, residual, rate, months);
+  const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente);
+  const totalMonthly = carMonthly + fm.avgMonthly;
+
+  document.getElementById('lCarMonthly').textContent = fmt(carMonthly);
+  document.getElementById('lAfgiftMonthly').textContent = fmt(fm.avgMonthly);
+  document.getElementById('lResidual').textContent = fmt(residual);
+  document.getElementById('lTotalMonthly').textContent = fmt(totalMonthly) + '/md.';
+  document.getElementById('leaseTotal').textContent = fmt(totalMonthly) + '/md.';
+}
+
+// ---------------- Events ----------------
+document.getElementById('addCompBtn').addEventListener('click', () => { addCompRow(); renderAll(); });
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+document.querySelectorAll('#fuelSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#fuelSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    fuel = btn.dataset.fuel;
+    document.getElementById('co2FieldWrap').style.display = (fuel === 'ev') ? 'none' : 'block';
+    renderAll();
+  });
+});
+
+['co2','ageMonths','kmStand','months','downpct','rate','restRente','residualDepRate'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', renderAll);
+});
+document.getElementById('residualAuto').addEventListener('change', renderAll);
+
+document.getElementById('reportDate').textContent = 'Genereret ' + new Date().toLocaleDateString('da-DK', { year:'numeric', month:'long', day:'numeric' });
+
+renderAll();
+</script>
+</body>
+</html>
