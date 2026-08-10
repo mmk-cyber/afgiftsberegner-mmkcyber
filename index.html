@@ -151,7 +151,7 @@
 
   Dette værktøj beregner dansk registreringsafgift og flexleasing-ydelse. Det har INGEN egen
   internetadgang eller søgefunktion — sammenligningstabellen skal udfyldes manuelt, typisk ved
-  at du (Claude) finder data via Claude for Chrome og taster det ind for brugeren.
+  at du (Claude) finder data via Claude for Chrome og taster det ind for brugeren. VÆRKTØJETS PLACERING & DEPLOYMENT: Denne side hostes via GitHub Pages fra det PRIVATE repo "mmk-cyber/afgiftsberegner-mmkcyber" (branch: main), filen er index.html i repo-roden. Ændringer laves ved at redigere index.html direkte i GitHub's webeditor (github.com/mmk-cyber/afgiftsberegner-mmkcyber/edit/main/index.html) via den forbundne Chrome-browser og committe til main — Pages opdaterer automatisk. Test ALTID ændringer i en skjult iframe (srcdoc = ny kilde) og tjek for JS-fejl FØR du committer, særligt at ingen tilbageværende kode refererer til fjernede element-ID'er.
 
   FAST FREMGANGSMÅDE FOR SAMMENLIGNINGSDATA, I DENNE RÆKKEFØLGE:
   1. Søg FØRST på Bilbasen.dk og DBA.dk efter TOTALPRISER (inkl. moms og afgift) for
@@ -173,7 +173,7 @@
   - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
     eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
     godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
-  - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km.
+  - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km. Udfyld OGSÅ feltet "Værdi u. afgift" for hver sammenligning (hentes fra bilopslag.nu's Registreringsafgift-sektion, seneste vurderingsrække) — Flexleasing-kortets restværdi beregnes automatisk ud fra disse værdier (nærmeste km-match), og uden mindst én udfyldt værdi bliver restværdien 0 kr. Bemærk at Flexleasing-ydelsen (§3b) udelukkende er afgift + rentetillæg — bilfinansiering er kun en orienterende info-linje og indgår IKKE i den viste ydelse; rør ikke ved denne adskillelse, medmindre brugeren eksplicit beder om det.
 
   KENDTE FALDGRUBER (fundet i praksis, undgå at gentage dem):
   - bilopslag.nu's mærke-filter er versalfølsomt (fx "MERCEDES-BENZ", "AUDI" — ikke blandet case).
