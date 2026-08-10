@@ -166,6 +166,10 @@
     en stationcar) — ALDRIG cabriolet/coupé blandet ind, medmindre brugerens bil selv er det.
   - Prioritér de biler, der er tættest på brugerens bil i årgang OG km-stand (ranger efter
     kombineret nærhed, ikke kun det ene parameter).
+  - Ved brug af bilopslag.nu's avancerede søgning: filtrér eksplicit på "Første
+    registreringsdato fra/til" til ca. ±1-2 år omkring brugerens bils årgang — søg IKKE
+    bare på modelnavn uden datofilter, for gamle sammenligninger giver dårlige resultater,
+    selvom antallet af fund ser stort ud.
   - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
     eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
     godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
@@ -183,6 +187,21 @@
   - "+ Tilføj sammenligning"-knappen reagerer ikke altid pålideligt på automatiserede klik i
     browserautomatisering — kald i så fald JS-funktionen addCompRow(kilde, beskrivelse, pris,
     dato, km, link) direkte i konsollen i stedet, og kald renderAll() bagefter.
+
+  - KRITISK: bilopslag.nu's søgeresultat-kolonne "Variant" (fx "4,0 biturbo") er IKKE
+    pålidelig for karosseri/type — biler med identisk variant-tekst kan reelt være coupé,
+    cabriolet, stationcar ELLER sedan (set i praksis for AMG C63 S). Åbn hver enkelt bils
+    side og tjek feltet "Stamdata → TYPE" (fx "Coupé, 2 døre, passagerer") for at bekræfte
+    det faktiske karosseri, FØR bilen bruges som sammenligning.
+  - I "Model"-multiselect-feltet i avanceret søgning: vælg ALLE stavevarianter af den
+    relevante performance-variant (fx for AMG C 63 S: "AMG C 63 S", "AMG C 63S",
+    "C 63 AMG S" osv., med/uden mellemrum, AMG før/efter modelnavn) — ellers overses
+    reelle biler. UI'ets multiselect kan miste tidligere valg, hvis du klikker/genskriver i
+    feltet — byg i stedet søge-URL'en direkte med flere model_in[]=... parametre for
+    pålidelighed (fx ?model_in[]=AMG+C+63+S&model_in[]=AMG+C+63S&...).
+  - Hvis en bils "Registreringsafgift"-sektion har flere rækker (leasing-genberegninger over
+    tid), brug den SENESTE (nyeste dato) som sammenligningsdata — det er den mest aktuelle
+    vurdering af bilens værdi.
 
   ØVRIGE FASTE VALG:
   - Leasingperiodens standardværdi er 12 måneder (ikke 36).
