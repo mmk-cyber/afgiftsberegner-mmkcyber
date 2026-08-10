@@ -256,6 +256,7 @@
           <th style="width:13%;">Pris (kr.)</th>
           <th style="width:11%;">Dato</th>
           <th style="width:11%;">Km</th>
+          <th style="width:13%;">Værdi u. afgift</th>
           <th style="width:10%;">Link</th>
           <th style="width:30px;"></th>
         </tr>
@@ -290,14 +291,9 @@
     </div>
     <p class="footnote" style="margin:8px 0 0;">To forskellige renter, med vilje: <strong>bilfinansiering</strong> er en almindelig markedsrente for lånet til bilens ekskl.-afgift-værdi. <strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
     <div class="grid grid-2" style="margin-top:16px;">
-      <div class="field">
-        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:var(--sans);color:var(--ink);font-size:13.5px;">
-          <input type="checkbox" id="residualAuto" style="width:auto;" checked> Beregn restværdi automatisk
-        </label>
-      </div>
-      <div class="field">
-        <label for="residualDepRate">Antaget værditab (%/år)</label>
-        <input type="number" id="residualDepRate" value="15" min="0" max="50">
+      <div class="field" style="grid-column:1/-1;">
+        <label>Restværdi (ekskl. moms og afgift) — findes automatisk ud fra sammenligningerne</label>
+        <div id="residualSourceNote" style="font-size:13.5px;color:#666;line-height:1.5;">–</div>
       </div>
     </div>
   </div>
@@ -336,7 +332,7 @@
     <div class="result-card">
       <h3>Flexleasing (§3b, forholdsmæssig afgift)</h3>
       <div class="big" id="leaseTotal">0 kr./md.</div>
-      <div class="line"><span>Bilfinansiering</span><span id="lCarMonthly">–</span></div>
+      <div class="line" style="opacity:.7;"><span>Bilfinansiering (til orientering, indgår ikke i ydelsen)</span><span id="lCarMonthly">–</span></div>
       <div class="line"><span>Afgift/rente, gnsn. pr. md. (ekskl. moms)</span><span id="lAfgiftMonthly">–</span></div>
       <div class="line"><span>Restværdi ved periodens udløb, ekskl. moms</span><span id="lResidual">–</span></div>
       <div class="line"><span>Restværdi ved periodens udløb, inkl. moms</span><span id="lResidualIncl">–</span></div>
@@ -443,7 +439,7 @@ function annuityWithBalloon(P, B, annualRatePct, n){
 
 // ---------------- Sammenligningstabel ----------------
 let compRowId = 0;
-function addCompRow(kilde, beskrivelse, pris, dato, km, link){
+function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift){
   const id = 'c'+(compRowId++);
   const tr = document.createElement('tr');
   tr.dataset.rowId = id;
@@ -458,6 +454,7 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link){
     <td><input type="number" class="c-pris" value="${pris||''}" step="1000" min="0"></td>
     <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
+    <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td>
     <td><input type="url" class="c-link" value="${link||''}" placeholder="link"></td>
     <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
   document.getElementById('compBody').appendChild(tr);
@@ -472,6 +469,7 @@ function getComparisons(){
     pris: parseFloat(tr.querySelector('.c-pris').value) || 0,
     dato: tr.querySelector('.c-dato').value,
     km: parseFloat(tr.querySelector('.c-km').value) || 0,
+    vaerdiUAfgift: parseFloat(tr.querySelector('.c-vaerdiuafgift').value) || 0,
     link: tr.querySelector('.c-link').value,
   })).filter(c => c.pris > 0);
 }
@@ -495,6 +493,18 @@ function deriveMarketValue(comparisons){
   }
   const totalIncl = used.reduce((s,c)=>s+c.pris,0) / used.length;
   return { totalIncl, tier, usedCount: used.length, excludedNote };
+}
+
+function deriveResidualValue(comparisons, targetKm){
+  const withValue = comparisons.filter(c => c.vaerdiUAfgift > 0);
+  if(withValue.length === 0) return { value: 0, source: null };
+  let best = withValue[0];
+  let bestDiff = Math.abs(best.km - targetKm);
+  for(const c of withValue){
+    const diff = Math.abs(c.km - targetKm);
+    if(diff < bestDiff){ best = c; bestDiff = diff; }
+  }
+  return { value: best.vaerdiUAfgift, source: best };
 }
 
 function renderConfidenceBanner(market, count){
@@ -557,26 +567,25 @@ function renderAll(){
   const downPct = parseFloat(document.getElementById('downpct').value) || 0;
   const rate = parseFloat(document.getElementById('rate').value) || 0;
   const restRente = parseFloat(document.getElementById('restRente').value) || 0;
-  const autoResidual = document.getElementById('residualAuto').checked;
-  const depRate = parseFloat(document.getElementById('residualDepRate').value) || 0;
+  const kmStand = parseFloat(document.getElementById('kmStand').value) || 0;
+  const futureKm = ageMonths > 0 ? kmStand + (kmStand/ageMonths)*months : kmStand;
+  const residualInfo = deriveResidualValue(comparisons, futureKm);
+  const residual = residualInfo.value;
 
-  let residual;
-  if(autoResidual){
-    residual = exAfgiftValue * Math.pow(1 - depRate/100, months/12);
-  } else {
-    residual = 0;
-  }
   const udbetaling = exAfgiftValue * (downPct/100);
   const financed = exAfgiftValue - udbetaling;
   const residualTooHigh = residual > financed;
   const carMonthly = residualTooHigh ? 0 : annuityWithBalloon(financed, residual, rate, months);
   const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente);
-  const totalMonthly = carMonthly + fm.avgMonthly;
+  const totalMonthly = fm.avgMonthly;
 
   document.getElementById('lCarMonthly').textContent = fmt(carMonthly);
   document.getElementById('lAfgiftMonthly').textContent = fmt(fm.avgMonthly);
   document.getElementById('lResidual').textContent = fmt(residual);
   document.getElementById('lResidualIncl').textContent = fmt(residual * 1.25);
+  document.getElementById('residualSourceNote').textContent = residualInfo.source
+    ? `Kilde: ${residualInfo.source.kilde} – ${residualInfo.source.beskrivelse} (${Math.round(residualInfo.source.km).toLocaleString('da-DK')} km) → ${fmt(residualInfo.value)} Estimeret km ved periodens udløb: ${Math.round(futureKm).toLocaleString('da-DK')} km.`
+    : 'Ingen sammenligning har en udfyldt "Værdi u. afgift" — restværdi sat til 0 kr. Udfyld feltet på mindst én sammenligning.';
   document.getElementById('lTotalMonthlyExcl').textContent = fmt(totalMonthly) + '/md.';
   document.getElementById('lTotalMonthlyIncl').textContent = fmt(totalMonthly * 1.25) + '/md.';
   document.getElementById('leaseTotal').textContent = fmt(totalMonthly * 1.25) + '/md. (inkl. moms)';
@@ -597,10 +606,9 @@ document.querySelectorAll('#fuelSeg button').forEach(btn=>{
   });
 });
 
-['co2','ageMonths','kmStand','months','downpct','rate','restRente','residualDepRate'].forEach(id=>{
+['co2','ageMonths','kmStand','months','downpct','rate','restRente'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderAll);
 });
-document.getElementById('residualAuto').addEventListener('change', renderAll);
 
 document.getElementById('reportDate').textContent = 'Genereret ' + new Date().toLocaleDateString('da-DK', { year:'numeric', month:'long', day:'numeric' });
 
