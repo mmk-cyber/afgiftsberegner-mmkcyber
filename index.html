@@ -217,10 +217,12 @@
     <div class="field" style="margin-bottom:16px;">
       <label>Drivmiddel</label>
       <div class="seg" id="fuelSeg">
-        <button data-fuel="konventionel" class="active">Benzin / diesel</button>
-        <button data-fuel="phev">Plugin-hybrid</button>
-        <button data-fuel="ev">Elbil</button>
+        <button data-fuel="konventionel" data-display="Benzin" class="active">Benzin</button>
+        <button data-fuel="konventionel" data-display="Diesel">Diesel</button>
+        <button data-fuel="phev" data-display="Plugin-hybrid">Plugin-hybrid</button>
+        <button data-fuel="ev" data-display="Elbil">Elbil</button>
       </div>
+      <p class="footnote" style="margin:6px 0 0;">Selve registreringsafgiften (denne beregning) er identisk for benzin og diesel — begge er CO2-baserede. Et evt. dieseltillæg hører til den løbende grønne ejerafgift, som ikke indgår her.</p>
     </div>
     <div class="grid grid-4">
       <div class="field">
@@ -278,14 +280,15 @@
         <input type="number" id="downpct" value="10" min="0" max="100">
       </div>
       <div class="field">
-        <label for="rate">Rente, bilfinansiering (%/år)</label>
+        <label for="rate">Rente på bilfinansiering (markedsrente, %/år)</label>
         <input type="number" id="rate" value="6" min="0" step="0.1">
       </div>
       <div class="field">
-        <label for="restRente">Rentetillæg, restafgift (%/år)</label>
-        <input type="number" id="restRente" value="5" min="0" step="0.1">
+        <label for="restRente">Rentetillæg på restafgift — Skats sats (%/år)</label>
+        <input type="number" id="restRente" value="3.8" min="0" step="0.1">
       </div>
     </div>
+    <p class="footnote" style="margin:8px 0 0;">To forskellige renter, med vilje: <strong>bilfinansiering</strong> er en almindelig markedsrente for lånet til bilens ekskl.-afgift-værdi. <strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
     <div class="grid grid-2" style="margin-top:16px;">
       <div class="field">
         <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:var(--sans);color:var(--ink);font-size:13.5px;">
@@ -334,9 +337,12 @@
       <h3>Flexleasing (§3b, forholdsmæssig afgift)</h3>
       <div class="big" id="leaseTotal">0 kr./md.</div>
       <div class="line"><span>Bilfinansiering</span><span id="lCarMonthly">–</span></div>
-      <div class="line"><span>Afgift/rente, gnsn. pr. md.</span><span id="lAfgiftMonthly">–</span></div>
-      <div class="line"><span>Restværdi ved periodens udløb</span><span id="lResidual">–</span></div>
-      <div class="line total"><span>Samlet ydelse pr. måned</span><span id="lTotalMonthly">–</span></div>
+      <div class="line"><span>Afgift/rente, gnsn. pr. md. (ekskl. moms)</span><span id="lAfgiftMonthly">–</span></div>
+      <div class="line"><span>Restværdi ved periodens udløb, ekskl. moms</span><span id="lResidual">–</span></div>
+      <div class="line"><span>Restværdi ved periodens udløb, inkl. moms</span><span id="lResidualIncl">–</span></div>
+      <div class="line total"><span>Samlet ydelse pr. måned, ekskl. moms</span><span id="lTotalMonthlyExcl">–</span></div>
+      <div class="line total"><span>Samlet ydelse pr. måned, inkl. moms (25%)</span><span id="lTotalMonthlyIncl">–</span></div>
+      <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
     </div>
   </div>
 
@@ -356,6 +362,7 @@ const RATES = {
   extraDeduction: { konventionel: 0, phev: 43000, ev: 161300 }
 };
 let fuel = 'konventionel';
+let fuelDisplay = 'Benzin';
 const fmt = n => Math.round(n).toLocaleString('da-DK') + ' kr.';
 
 function valueTax(value){
@@ -569,8 +576,10 @@ function renderAll(){
   document.getElementById('lCarMonthly').textContent = fmt(carMonthly);
   document.getElementById('lAfgiftMonthly').textContent = fmt(fm.avgMonthly);
   document.getElementById('lResidual').textContent = fmt(residual);
-  document.getElementById('lTotalMonthly').textContent = fmt(totalMonthly) + '/md.';
-  document.getElementById('leaseTotal').textContent = fmt(totalMonthly) + '/md.';
+  document.getElementById('lResidualIncl').textContent = fmt(residual * 1.25);
+  document.getElementById('lTotalMonthlyExcl').textContent = fmt(totalMonthly) + '/md.';
+  document.getElementById('lTotalMonthlyIncl').textContent = fmt(totalMonthly * 1.25) + '/md.';
+  document.getElementById('leaseTotal').textContent = fmt(totalMonthly * 1.25) + '/md. (inkl. moms)';
 }
 
 // ---------------- Events ----------------
@@ -582,6 +591,7 @@ document.querySelectorAll('#fuelSeg button').forEach(btn=>{
     document.querySelectorAll('#fuelSeg button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     fuel = btn.dataset.fuel;
+    fuelDisplay = btn.dataset.display;
     document.getElementById('co2FieldWrap').style.display = (fuel === 'ev') ? 'none' : 'block';
     renderAll();
   });
