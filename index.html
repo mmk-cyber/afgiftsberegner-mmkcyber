@@ -173,7 +173,7 @@
   - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
     eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
     godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
-  - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km. Udfyld OGSÅ feltet "Værdi u. afgift" for hver sammenligning (hentes fra bilopslag.nu's Registreringsafgift-sektion, seneste vurderingsrække) — Flexleasing-kortets restværdi beregnes automatisk ud fra disse værdier (nærmeste km-match), og uden mindst én udfyldt værdi bliver restværdien 0 kr. Bemærk at Flexleasing-ydelsen (§3b) udelukkende er afgift + rentetillæg — bilfinansiering er kun en orienterende info-linje og indgår IKKE i den viste ydelse; rør ikke ved denne adskillelse, medmindre brugeren eksplicit beder om det.
+  - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km. Udfyld OGSÅ feltet "Værdi u. afgift" for hver sammenligning (hentes fra bilopslag.nu's Registreringsafgift-sektion, seneste vurderingsrække) — Flexleasing-kortets restværdi beregnes automatisk ud fra disse værdier (nærmeste km-match), og uden mindst én udfyldt værdi bliver restværdien 0 kr. Bemærk at Flexleasing-ydelsen (§3b) udelukkende er afgift + rentetillæg — bilfinansiering er kun en orienterende info-linje og indgår IKKE i den viste ydelse; rør ikke ved denne adskillelse, medmindre brugeren eksplicit beder om det. VIGTIGT OM MOMS: "Værdi u. afgift" fra bilopslag.nu er allerede INKL. moms (jf. Motorstyrelsens definition af afgiftspligtig værdi: "bilens almindelige pris inkl. moms, men uden registreringsafgift") — gang IKKE denne værdi med 1,25 for at få en "inkl. moms"-figur, det ville dobbelttælle momsen. Skal en eksl.-moms-værdi bruges, DIVIDÉR med 1,25 i stedet.
 
   KENDTE FALDGRUBER (fundet i praksis, undgå at gentage dem):
   - bilopslag.nu's mærke-filter er versalfølsomt (fx "MERCEDES-BENZ", "AUDI" — ikke blandet case).
@@ -600,8 +600,8 @@ function renderAll(){
 
   document.getElementById('lCarMonthly').textContent = fmt(carMonthly);
   document.getElementById('lAfgiftMonthly').textContent = fmt(fm.avgMonthly);
-  document.getElementById('lResidual').textContent = fmt(residual);
-  document.getElementById('lResidualIncl').textContent = fmt(residual * 1.25);
+  document.getElementById('lResidual').textContent = fmt(residual / 1.25);
+document.getElementById('lResidualIncl').textContent = fmt(residual);
   document.getElementById('residualSourceNote').textContent = residualInfo.source
     ? `Kilde: ${residualInfo.source.kilde} – ${residualInfo.source.beskrivelse} (${Math.round(residualInfo.source.km).toLocaleString('da-DK')} km) → ${fmt(residualInfo.value)} Estimeret km ved periodens udløb: ${Math.round(futureKm).toLocaleString('da-DK')} km.`
     : 'Ingen sammenligning har en udfyldt "Værdi u. afgift" — restværdi sat til 0 kr. Udfyld feltet på mindst én sammenligning.';
