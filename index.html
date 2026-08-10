@@ -146,6 +146,49 @@
     header.masthead{border-bottom:2px solid #000;}
   }
 </style>
+<!--
+  INSTRUKTIONER TIL CLAUDE (læs dette, hvis du starter en ny samtale om dette værktøj)
+
+  Dette værktøj beregner dansk registreringsafgift og flexleasing-ydelse. Det har INGEN egen
+  internetadgang eller søgefunktion — sammenligningstabellen skal udfyldes manuelt, typisk ved
+  at du (Claude) finder data via Claude for Chrome og taster det ind for brugeren.
+
+  FAST FREMGANGSMÅDE FOR SAMMENLIGNINGSDATA, I DENNE RÆKKEFØLGE:
+  1. Søg FØRST på Bilbasen.dk og DBA.dk efter TOTALPRISER (inkl. moms og afgift) for
+     sammenlignelige, allerede danske-indregistrerede biler.
+  2. Kun hvis Bilbasen+DBA tilsammen ikke giver mindst 3 (helst 5+) gode matches: søg som
+     backup på bilopslag.nu efter enkeltbilers "Registreringsafgift"-sektion (officielle
+     Motorstyrelsen-vurderinger, viser Handelspris = totalpris inkl. afgift).
+
+  KRAV TIL SAMMENLIGNINGERNE:
+  - Minimum 3, helst 5 eller flere.
+  - SAMME karosseri/type som brugerens bil hver gang (fx kun stationcar, hvis brugerens bil er
+    en stationcar) — ALDRIG cabriolet/coupé blandet ind, medmindre brugerens bil selv er det.
+  - Prioritér de biler, der er tættest på brugerens bil i årgang OG km-stand (ranger efter
+    kombineret nærhed, ikke kun det ene parameter).
+  - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
+    eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
+    godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
+  - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km.
+
+  KENDTE FALDGRUBER (fundet i praksis, undgå at gentage dem):
+  - bilopslag.nu's mærke-filter er versalfølsomt (fx "MERCEDES-BENZ", "AUDI" — ikke blandet case).
+  - bilopslag.nu viser kolonneoverskriften som "HANDELSPRIS" (versaler) — søg case-insensitivt
+    efter denne tekst, ellers overser du data, der rent faktisk er der.
+  - Kun et mindretal af biler på bilopslag.nu har en udfyldt Registreringsafgift-sektion (typisk
+    kun leasede/nyligt genberegnede biler) — tjek flere stelnumre, forvent en del "ingen data".
+  - CO2 fra en udenlandsk annonce stemmer ofte ikke overens med det officielle danske
+    registreringstal for samme model — brug det danske tal (fra bilopslag.nu/producent), hvis
+    det afviger fra annoncens eget tal.
+  - "+ Tilføj sammenligning"-knappen reagerer ikke altid pålideligt på automatiserede klik i
+    browserautomatisering — kald i så fald JS-funktionen addCompRow(kilde, beskrivelse, pris,
+    dato, km, link) direkte i konsollen i stedet, og kald renderAll() bagefter.
+
+  ØVRIGE FASTE VALG:
+  - Leasingperiodens standardværdi er 12 måneder (ikke 36).
+  - Alle satser (RATES-objektet i JS) er 2026-tal fra Skatteministeriet — verificér ikke på ny
+    for hver bil, men tjek periodisk mod motorst.dk, hvis værktøjet bruges over længere tid.
+-->
 </head>
 <body>
 <div class="wrap">
@@ -202,6 +245,7 @@
   <div class="card">
     <h2>Sammenligningsgrundlag — danske biler</h2>
     <p class="sub">Danske referencer, fundet på Bilbasen/DBA (salgsannoncer) eller bilopslag.nu (allerede afgiftsberegnede biler). Alle priser her er <strong>totalpriser inkl. moms og afgift</strong> — værktøjet tilbageregner selv den afgiftspligtige værdi.</p>
+    <p class="footnote" style="margin:-8px 0 16px;">Fast metode: søg først Bilbasen + DBA efter totalpriser (ikke "Uden afgift"/engros); brug kun bilopslag.nu som backup, hvis for få gode matches findes der. Samme karosseri hver gang, minimum 3, helst 5+, tættest på årgang/km. Se HTML-kildekoden (øverste kommentar) for fulde instruktioner — en ny Claude-samtale kan læse dem direkte derfra.</p>
     <table class="comp">
       <thead>
         <tr>
