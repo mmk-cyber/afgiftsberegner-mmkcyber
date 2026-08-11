@@ -435,19 +435,28 @@ function forholdsmaessigRate(ageMonths){
 }
 
 function computeForholdsmaessig(exAfgiftValue, startAgeMonths, leaseMonths, renteTillaegPct){
-  const r = computeAfgift(exAfgiftValue, parseFloat(document.getElementById('co2').value)||0, fuel);
-  const fullTax = r.final;
-  let remaining = fullTax;
-  let totalPaid = 0;
-  for(let m=0; m<leaseMonths; m++){
-    const age = startAgeMonths + m;
-    const rate = forholdsmaessigRate(age);
-    const monthlyBase = remaining * rate;
-    const renteAddon = remaining * (renteTillaegPct/100/12);
-    totalPaid += monthlyBase + renteAddon;
-    remaining = Math.max(0, remaining - monthlyBase);
-  }
-  return { avgMonthly: totalPaid/leaseMonths, totalTaxPaid: totalPaid, restafgiftVedSlut: remaining, fullTax };
+    const r = computeAfgift(exAfgiftValue, parseFloat(document.getElementById('co2').value)||0, fuel);
+    const fullTax = r.final;
+    const alder = startAgeMonths;
+    const periode = leaseMonths;
+    let k15, k16, k17;
+    if(alder < 3){
+          k15 = (periode + alder < 4) ? periode : (3 - alder);
+    } else {
+          k15 = 0;
+    }
+    if(alder > 36){
+          k16 = 0;
+    } else {
+          k16 = (periode > (36 - alder)) ? (36 - alder - k15) : (periode - k15);
+    }
+    k17 = periode - k15 - k16;
+    const vaerditabPct = k15*0.02 + k16*0.01 + k17*0.005;
+    const vaerditabAfgift = fullTax * vaerditabPct;
+    const restafgift = fullTax - vaerditabAfgift;
+    const renteAfRestafgift = restafgift * (renteTillaegPct/100) * (periode/12);
+    const totalPaid = vaerditabAfgift + renteAfRestafgift;
+    return { avgMonthly: totalPaid/periode, totalTaxPaid: totalPaid, restafgiftVedSlut: restafgift, fullTax };
 }
 
 function annuityWithBalloon(P, B, annualRatePct, n){
