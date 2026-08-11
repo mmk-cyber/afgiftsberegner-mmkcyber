@@ -327,7 +327,7 @@
     <p class="footnote" style="margin:8px 0 0;">To forskellige renter, med vilje: <strong>bilfinansiering</strong> er en almindelig markedsrente for lånet til bilens ekskl.-afgift-værdi. <strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
     <div class="grid grid-2" style="margin-top:16px;">
       <div class="field" style="grid-column:1/-1;">
-        <label>Restværdi (ekskl. moms og afgift) — findes automatisk ud fra sammenligningerne</label>
+        <label>Restværdi (ekskl. moms og afgift) — gennemsnit af 3 metoder: peer-sammenligning, regression og SKAT's værditabskurve</label>
         <div id="residualSourceNote" style="font-size:13.5px;color:#666;line-height:1.5;">–</div>
       </div>
     </div>
@@ -371,6 +371,8 @@
       <div class="line"><span>Afgift/rente, gnsn. pr. md. (ekskl. moms)</span><span id="lAfgiftMonthly">–</span></div>
       <div class="line"><span>Restværdi ved periodens udløb, ekskl. moms</span><span id="lResidual">–</span></div>
       <div class="line"><span>Restværdi ved periodens udløb, inkl. moms</span><span id="lResidualIncl">–</span></div>
+      <div class="line"><span>Værditab i leasingperioden, ekskl. moms</span><span id="lValueLoss">–</span></div>
+      <div class="line"><span>Værditab i leasingperioden, inkl. moms</span><span id="lValueLossIncl">–</span></div>
       <div class="line total"><span>Samlet ydelse pr. måned, ekskl. moms</span><span id="lTotalMonthlyExcl">–</span></div>
       <div class="line total"><span>Samlet ydelse pr. måned, inkl. moms (25%)</span><span id="lTotalMonthlyIncl">–</span></div>
       <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
@@ -472,7 +474,7 @@ function computeForholdsmaessig(exAfgiftValue, startAgeMonths, leaseMonths, rent
     const restafgift = fullTax - vaerditabAfgift;
     const renteAfRestafgift = restafgift * (renteTillaegPct/100) * (periode/12);
     const totalPaid = vaerditabAfgift + renteAfRestafgift;
-    return { avgMonthly: totalPaid/periode, totalTaxPaid: totalPaid, restafgiftVedSlut: restafgift, fullTax };
+    return { avgMonthly: totalPaid/periode, totalTaxPaid: totalPaid, restafgiftVedSlut: restafgift, fullTax, vaerditabPct };
 }
 
 function annuityWithBalloon(P, B, annualRatePct, n){
@@ -551,6 +553,40 @@ function deriveResidualValue(comparisons, targetKm){
   return { value: best.vaerdiUAfgift, source: best };
 }
 
+// Metode B: lineær regression (km -> værdi u. afgift) på tværs af sammenligninger
+function linearRegressionKmValue(comparisons, targetKm){
+  const pts = comparisons.filter(c => c.vaerdiUAfgift > 0 && c.km > 0);
+  if(pts.length < 2) return null;
+  const n = pts.length;
+  const sumX = pts.reduce((s,c)=>s+c.km,0);
+  const sumY = pts.reduce((s,c)=>s+c.vaerdiUAfgift,0);
+  const sumXY = pts.reduce((s,c)=>s+c.km*c.vaerdiUAfgift,0);
+  const sumXX = pts.reduce((s,c)=>s+c.km*c.km,0);
+  const denom = n*sumXX - sumX*sumX;
+  if(denom === 0) return null;
+  const b = (n*sumXY - sumX*sumY) / denom;
+  const a = (sumY - b*sumX) / n;
+  const val = a + b*targetKm;
+  return val > 0 ? val : null;
+}
+
+// Kombineret restværdimodel: 3 metoder vægtet ligeligt
+// A) Nærmeste sammenligning på km, B) Lineær regression på km, C) SKAT's værditabskurve (2%/1%/0.5% pr. md.) anvendt på bilens egen afgiftspligtige værdi
+function deriveResidualValueCombined(comparisons, targetKm, exAfgiftValue, ageMonths, leaseMonths){
+  const methodAInfo = deriveResidualValue(comparisons, targetKm);
+  const methodA = methodAInfo.value > 0 ? methodAInfo.value : null;
+  const methodB = linearRegressionKmValue(comparisons, targetKm);
+  let methodC = null;
+  if(exAfgiftValue > 0 && leaseMonths > 0){
+    const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, leaseMonths, 0);
+    methodC = exAfgiftValue * (1 - fm.vaerditabPct);
+  }
+  const vals = [methodA, methodB, methodC].filter(v => v !== null && v > 0);
+  const combined = vals.length > 0 ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
+  return { value: combined, methodA, methodB, methodC, source: methodAInfo.source, count: vals.length };
+}
+
+
 function renderConfidenceBanner(market, count){
   const el = document.getElementById('confidenceBanner');
   const notes = document.getElementById('basisNote');
@@ -613,7 +649,7 @@ function renderAll(){
   const restRente = parseFloat(document.getElementById('restRente').value) || 0;
   const kmStand = parseFloat(document.getElementById('kmStand').value) || 0;
   const futureKm = ageMonths > 0 ? kmStand + (kmStand/ageMonths)*months : kmStand;
-  const residualInfo = deriveResidualValue(comparisons, futureKm);
+  const residualInfo = deriveResidualValueCombined(comparisons, futureKm, exAfgiftValue, ageMonths, months);
   const residual = residualInfo.value;
 
   const udbetaling = exAfgiftValue * (downPct/100);
@@ -627,9 +663,18 @@ function renderAll(){
   document.getElementById('lAfgiftMonthly').textContent = fmt(fm.avgMonthly);
   document.getElementById('lResidual').textContent = fmt(residual / 1.25);
 document.getElementById('lResidualIncl').textContent = fmt(residual);
-  document.getElementById('residualSourceNote').textContent = residualInfo.source
-    ? `Kilde: ${residualInfo.source.kilde} – ${residualInfo.source.beskrivelse} (${Math.round(residualInfo.source.km).toLocaleString('da-DK')} km) → ${fmt(residualInfo.value)} Estimeret km ved periodens udløb: ${Math.round(futureKm).toLocaleString('da-DK')} km.`
-    : 'Ingen sammenligning har en udfyldt "Værdi u. afgift" — restværdi sat til 0 kr. Udfyld feltet på mindst én sammenligning.';
+  const valueLossIncl = Math.max(0, exAfgiftValue - residual);
+  const valueLossExcl = valueLossIncl / 1.25;
+  const valueLossPct = exAfgiftValue > 0 ? Math.round(valueLossIncl / exAfgiftValue * 100) : 0;
+  document.getElementById('lValueLoss').textContent = exAfgiftValue > 0 ? fmt(valueLossExcl) + ' (' + valueLossPct + '%)' : '–';
+  document.getElementById('lValueLossIncl').textContent = exAfgiftValue > 0 ? fmt(valueLossIncl) : '–';
+  document.getElementById('residualSourceNote').textContent = residualInfo.count > 0
+    ? `Kombineret restværdi (${residualInfo.count} metode(r), ligeligt vægtet): ${fmt(residualInfo.value)}. ` +
+      (residualInfo.methodA ? `Peer-sammenligning: ${fmt(residualInfo.methodA)}` + (residualInfo.source ? ` (${residualInfo.source.kilde} – ${residualInfo.source.beskrivelse}, ${Math.round(residualInfo.source.km).toLocaleString('da-DK')} km)` : '') + '. ' : '') +
+      (residualInfo.methodB ? `Regression: ${fmt(residualInfo.methodB)}. ` : '') +
+      (residualInfo.methodC ? `SKAT-værditabskurve: ${fmt(residualInfo.methodC)}. ` : '') +
+      `Estimeret km ved periodens udløb: ${Math.round(futureKm).toLocaleString('da-DK')} km.`
+    : 'Ingen metode kunne beregne en restværdi — udfyld mindst én sammenligning med Værdi u. afgift, eller angiv en afgiftspligtig værdi og alder.';
   document.getElementById('lTotalMonthlyExcl').textContent = fmt(totalMonthly) + '/md.';
   document.getElementById('lTotalMonthlyIncl').textContent = fmt(totalMonthly * 1.25) + '/md.';
   document.getElementById('leaseTotal').textContent = fmt(totalMonthly * 1.25) + '/md. (inkl. moms)';
