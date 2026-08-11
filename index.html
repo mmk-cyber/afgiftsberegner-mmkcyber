@@ -173,7 +173,7 @@
   - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
     eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
     godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
-  - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km. Udfyld OGSÅ feltet "Værdi u. afgift" for hver sammenligning (hentes fra bilopslag.nu's Registreringsafgift-sektion, seneste vurderingsrække) — Flexleasing-kortets restværdi beregnes automatisk ud fra disse værdier (nærmeste km-match), og uden mindst én udfyldt værdi bliver restværdien 0 kr. Bemærk at Flexleasing-ydelsen (§3b) udelukkende er afgift + rentetillæg — bilfinansiering er kun en orienterende info-linje og indgår IKKE i den viste ydelse; rør ikke ved denne adskillelse, medmindre brugeren eksplicit beder om det. VIGTIGT OM MOMS: "Værdi u. afgift" fra bilopslag.nu er allerede INKL. moms (jf. Motorstyrelsens definition af afgiftspligtig værdi: "bilens almindelige pris inkl. moms, men uden registreringsafgift") — gang IKKE denne værdi med 1,25 for at få en "inkl. moms"-figur, det ville dobbelttælle momsen. Skal en eksl.-moms-værdi bruges, DIVIDÉR med 1,25 i stedet.
+  - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km. Udfyld OGSÅ feltet "Værdi u. afgift" for hver sammenligning (hentes fra bilopslag.nu's Registreringsafgift-sektion, seneste vurderingsrække) — Flexleasing-kortets restværdi beregnes automatisk ud fra disse værdier (nærmeste km-match), og uden mindst én udfyldt værdi bliver restværdien 0 kr. Bemærk at Flexleasing-ydelsen (§3b) udelukkende er afgift + rentetillæg — bilfinansiering er kun en orienterende info-linje og indgår IKKE i den viste ydelse; rør ikke ved denne adskillelse, medmindre brugeren eksplicit beder om det. VIGTIGT OM MOMS: "Værdi u. afgift" fra bilopslag.nu er allerede INKL. moms (jf. Motorstyrelsens definition af afgiftspligtig værdi: "bilens almindelige pris inkl. moms, men uden registreringsafgift") — gang IKKE denne værdi med 1,25 for at få en "inkl. moms"-figur, det ville dobbelttælle momsen. Skal en eksl.-moms-værdi bruges, DIVIDÉR med 1,25 i stedet. UDFYLD OGSÅ (hvis synlige på bilopslag.nu's Registreringsafgift-sektion) felterne "Opkrævet afgift (kr.)" og "Andel (%)" for hver sammenligning — disse to felter er rene referencetal (den faktisk opkrævede §3b-periodeafgift og dens andel af restafgiften for den pågældende bils seneste leasingperiode) og indgår IKKE i selve beregningen, men bruges af værktøjet til at vise en gennemsnitlig sanity-check-sætning under sammenligningstabellen, som brugeren kan sammenligne med værktøjets egen beregnede §3b-sats.
 
   KENDTE FALDGRUBER (fundet i praksis, undgå at gentage dem):
   - bilopslag.nu's mærke-filter er versalfølsomt (fx "MERCEDES-BENZ", "AUDI" — ikke blandet case).
@@ -275,7 +275,7 @@
           <th style="width:13%;">Pris (kr.)</th>
           <th style="width:11%;">Dato</th>
           <th style="width:11%;">Km</th>
-          <th style="width:13%;">Værdi u. afgift</th>
+          <th style="width:13%;">Værdi u. afgift</th><th style="width:11%;">Opkrævet afgift (kr.)</th><th style="width:8%;">Andel (%)</th>
           <th style="width:10%;">Link</th>
           <th style="width:30px;"></th>
         </tr>
@@ -284,7 +284,7 @@
     </table>
     <button class="addbtn no-print" id="addCompBtn" type="button">+ Tilføj sammenligning</button>
     <div id="confidenceBanner"></div>
-    <div class="basisnote" id="basisNote"></div>
+    <div class="basisnote" id="basisNote"></div><div class="basisnote" id="afgiftAndelNote" style="margin-top:4px"></div>
   </div>
 
   <div class="card">
@@ -458,7 +458,7 @@ function annuityWithBalloon(P, B, annualRatePct, n){
 
 // ---------------- Sammenligningstabel ----------------
 let compRowId = 0;
-function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift){
+function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, opkraevet, andelPct){
   const id = 'c'+(compRowId++);
   const tr = document.createElement('tr');
   tr.dataset.rowId = id;
@@ -473,7 +473,7 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift){
     <td><input type="number" class="c-pris" value="${pris||''}" step="1000" min="0"></td>
     <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
-    <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td>
+    <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-opkraevet" value="${opkraevet||''}" step="100" min="0" placeholder="opkrævet afgift"></td><td><input type="number" class="c-andel" value="${andelPct||''}" step="0.1" min="0" placeholder="%"></td>
     <td><input type="url" class="c-link" value="${link||''}" placeholder="link"></td>
     <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
   document.getElementById('compBody').appendChild(tr);
@@ -488,7 +488,7 @@ function getComparisons(){
     pris: parseFloat(tr.querySelector('.c-pris').value) || 0,
     dato: tr.querySelector('.c-dato').value,
     km: parseFloat(tr.querySelector('.c-km').value) || 0,
-    vaerdiUAfgift: parseFloat(tr.querySelector('.c-vaerdiuafgift').value) || 0,
+    vaerdiUAfgift: parseFloat(tr.querySelector('.c-vaerdiuafgift').value) || 0, opkraevet: parseFloat(tr.querySelector('.c-opkraevet').value) || 0, andelPct: parseFloat(tr.querySelector('.c-andel').value) || 0,
     link: tr.querySelector('.c-link').value,
   })).filter(c => c.pris > 0);
 }
@@ -550,7 +550,7 @@ function renderAll(){
 
   const comparisons = getComparisons();
   const market = deriveMarketValue(comparisons);
-  renderConfidenceBanner(market, comparisons.length);
+  renderConfidenceBanner(market, comparisons.length); const withAndel = comparisons.filter(c => c.andelPct > 0); const afgiftAndelEl = document.getElementById('afgiftAndelNote'); if(withAndel.length > 0){ const avgAndel = withAndel.reduce((s,c)=>s+c.andelPct,0)/withAndel.length; const minA = Math.min(...withAndel.map(c=>c.andelPct)); const maxA = Math.max(...withAndel.map(c=>c.andelPct)); afgiftAndelEl.textContent = `Til sammenligning: sammenligningsbilernes seneste §3b-opkrævninger lå på ${avgAndel.toFixed(1)}% i snit (spænd ${minA.toFixed(1)}-${maxA.toFixed(1)}%) af den daværende restafgift, jf. bilopslag.nu. Perioderne varierer i længde, så tallet er kun en grov sanity-check af §3b-satsen nedenfor og indgår ikke i selve beregningen.`; } else if(afgiftAndelEl){ afgiftAndelEl.textContent = ''; }
 
   const exAfgiftValue = market.totalIncl > 0 ? solveExAfgiftValue(market.totalIncl, co2, fuel) : 0;
 
