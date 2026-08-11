@@ -206,6 +206,15 @@
       multiselect kan miste tidligere valg, hvis du klikker/genskriver i feltet — byg i stedet
       søge-URL'en direkte med flere model_in[]=... parametre for pålidelighed (fx
       ?model_in[]=M850i&model_in[]=M850+i+xDrive&model_in[]=M850i+xDrive&model_in[]=M850i+XDrive).
+  - Udfyld desuden feltet "Registreringsafgift" (kolonnen lige efter "Værdi u. afgift") for
+    hver sammenligning, hvor tallet findes — det er den FULDE registreringsafgift for netop
+    den sammenligningsbil, hentet fra samme bilopslag.nu Registreringsafgift-sektion, kolonnen
+    "REGISTRERINGSAFGIFT" (seneste vurderingsrække). Forveksl den ikke med "Opkrævet afgift"
+    (kun den periodevise §3b-opkrævning) eller "Værdi u. afgift" (værdien ekskl. afgift).
+    Feltet er rent informativt — det indgår ikke i selve beregningen, men lader brugeren se
+    afgiften på hver enkelt sammenligningsbil direkte i tabellen. For Bilbasen/DBA-annoncer
+    findes tallet typisk ikke — lad feltet stå tomt i så fald, gæt det aldrig.
+
   - Hvis en bils "Registreringsafgift"-sektion har flere rækker (leasing-genberegninger over
     tid), brug den SENESTE (nyeste dato) som sammenligningsdata — det er den mest aktuelle
     vurdering af bilens værdi.
@@ -282,7 +291,7 @@
           <th style="width:13%;">Pris (kr.)</th>
           <th style="width:11%;">Dato</th>
           <th style="width:11%;">Km</th>
-          <th style="width:13%;">Værdi u. afgift</th><th style="width:11%;">Opkrævet afgift (kr.)</th><th style="width:8%;">Andel (%)</th>
+          <th style="width:11%;">Værdi u. afgift</th><th style="width:11%;">Registreringsafgift</th><th style="width:10%;">Opkrævet afgift (kr.)</th><th style="width:7%;">Andel (%)</th>
           <th style="width:10%;">Link</th>
           <th style="width:30px;"></th>
         </tr>
@@ -474,7 +483,7 @@ function annuityWithBalloon(P, B, annualRatePct, n){
 
 // ---------------- Sammenligningstabel ----------------
 let compRowId = 0;
-function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, opkraevet, andelPct){
+function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, regafgift, opkraevet, andelPct){
   const id = 'c'+(compRowId++);
   const tr = document.createElement('tr');
   tr.dataset.rowId = id;
@@ -489,7 +498,7 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, opk
     <td><input type="number" class="c-pris" value="${pris||''}" step="1000" min="0"></td>
     <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
-    <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-opkraevet" value="${opkraevet||''}" step="100" min="0" placeholder="opkrævet afgift"></td><td><input type="number" class="c-andel" value="${andelPct||''}" step="0.1" min="0" placeholder="%"></td>
+    <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-regafgift" value="${regafgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-opkraevet" value="${opkraevet||''}" step="100" min="0" placeholder="opkrævet afgift"></td><td><input type="number" class="c-andel" value="${andelPct||''}" step="0.1" min="0" placeholder="%"></td>
     <td><div style="display:flex;gap:4px;align-items:center;"><input type="url" class="c-link" value="${link||''}" placeholder="link" style="flex:1;min-width:60px;"><button type="button" class="linkbtn no-print" title="Åbn link" onclick="const u=this.previousElementSibling.value; if(u) window.open(u,'_blank');">↗</button></div></td>
     <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
   document.getElementById('compBody').appendChild(tr);
@@ -504,7 +513,7 @@ function getComparisons(){
     pris: parseFloat(tr.querySelector('.c-pris').value) || 0,
     dato: tr.querySelector('.c-dato').value,
     km: parseFloat(tr.querySelector('.c-km').value) || 0,
-    vaerdiUAfgift: parseFloat(tr.querySelector('.c-vaerdiuafgift').value) || 0, opkraevet: parseFloat(tr.querySelector('.c-opkraevet').value) || 0, andelPct: parseFloat(tr.querySelector('.c-andel').value) || 0,
+    vaerdiUAfgift: parseFloat(tr.querySelector('.c-vaerdiuafgift').value) || 0, regafgift: parseFloat(tr.querySelector('.c-regafgift').value) || 0, opkraevet: parseFloat(tr.querySelector('.c-opkraevet').value) || 0, andelPct: parseFloat(tr.querySelector('.c-andel').value) || 0,
     link: tr.querySelector('.c-link').value,
   })).filter(c => c.pris > 0);
 }
