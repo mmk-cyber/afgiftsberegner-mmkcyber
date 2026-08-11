@@ -142,7 +142,7 @@
     .result-card .line{border-bottom:1px solid #ddd;}
     .result-card .line span:first-child{color:#444;}
     input, select, textarea{border:none; background:none; padding:2px 0;}
-    .rowbtn, .addbtn{display:none;}
+    .rowbtn, .addbtn{display:none;} #comparisonsHeading{page-break-before:always;} #comparisonsHeading::before{content:"Bilag: ";}
     header.masthead{border-bottom:2px solid #000;}
   }
 </style>
@@ -264,7 +264,7 @@
   </div>
 
   <div class="card">
-    <h2>Sammenligningsgrundlag — danske biler</h2>
+    <h2 id="comparisonsHeading">Sammenligningsgrundlag — danske biler</h2>
     <p class="sub">Danske referencer, fundet på Bilbasen/DBA (salgsannoncer) eller bilopslag.nu (allerede afgiftsberegnede biler). Alle priser her er <strong>totalpriser inkl. moms og afgift</strong> — værktøjet tilbageregner selv den afgiftspligtige værdi.</p>
     <p class="footnote" style="margin:-8px 0 16px;">Fast metode: søg først Bilbasen + DBA efter totalpriser (ikke "Uden afgift"/engros); brug kun bilopslag.nu som backup, hvis for få gode matches findes der. Samme karosseri hver gang, minimum 3, helst 5+, tættest på årgang/km. Se HTML-kildekoden (øverste kommentar) for fulde instruktioner — en ny Claude-samtale kan læse dem direkte derfra.</p>
     <table class="comp">
@@ -550,7 +550,7 @@ function renderAll(){
 
   const comparisons = getComparisons();
   const market = deriveMarketValue(comparisons);
-  renderConfidenceBanner(market, comparisons.length); const withAndel = comparisons.filter(c => c.andelPct > 0); const afgiftAndelEl = document.getElementById('afgiftAndelNote'); if(withAndel.length > 0){ const avgAndel = withAndel.reduce((s,c)=>s+c.andelPct,0)/withAndel.length; const minA = Math.min(...withAndel.map(c=>c.andelPct)); const maxA = Math.max(...withAndel.map(c=>c.andelPct)); afgiftAndelEl.textContent = `Til sammenligning: sammenligningsbilernes seneste §3b-opkrævninger lå på ${avgAndel.toFixed(1)}% i snit (spænd ${minA.toFixed(1)}-${maxA.toFixed(1)}%) af den daværende restafgift, jf. bilopslag.nu. Perioderne varierer i længde, så tallet er kun en grov sanity-check af §3b-satsen nedenfor og indgår ikke i selve beregningen.`; } else if(afgiftAndelEl){ afgiftAndelEl.textContent = ''; }
+  renderConfidenceBanner(market, comparisons.length); const withAndel = comparisons.filter(c => c.andelPct > 0); const afgiftAndelEl = document.getElementById('afgiftAndelNote'); if(withAndel.length > 0){ const avgAndel = withAndel.reduce((s,c)=>s+c.andelPct,0)/withAndel.length; const minA = Math.min(...withAndel.map(c=>c.andelPct)); const maxA = Math.max(...withAndel.map(c=>c.andelPct)); afgiftAndelEl.textContent = `Til sammenligning: sammenligningsbilernes seneste §3b-opkrævninger lå på ${avgAndel.toFixed(1)}% i snit (spænd ${minA.toFixed(1)}-${maxA.toFixed(1)}%) af den daværende restafgift, jf. bilopslag.nu. Perioderne varierer i længde, så tallet er kun en grov sanity-check af §3b-satsen nedenfor og indgår ikke i selve beregningen. Ved print/PDF får sammenligningssektionen automatisk sideskæt og præfikset "Bilag: " (se #comparisonsHeading i print-CSS'en), så alle sammenligningsgrundlagene altid følger med som bilag - tilføj derfor altid sammenligningerne i selve værktøjet (ikke kun i chatten), så de indgår i print. Husk også ved brug af bilopslag.nu: tjek altid EFFEKT (HK/kW) i hver kandidats Teknik/Stamdata-sektion, ikke kun VIN-præfiks eller Variant-tekst - biler med samme VIN-præfiks/variant-navn kan være forskellige effekt-varianter (fx BMW M4 vs. M4 Competition).`; } else if(afgiftAndelEl){ afgiftAndelEl.textContent = ''; }
 
   const exAfgiftValue = market.totalIncl > 0 ? solveExAfgiftValue(market.totalIncl, co2, fuel) : 0;
 
