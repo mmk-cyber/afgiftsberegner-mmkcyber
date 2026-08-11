@@ -86,7 +86,7 @@
     border:none; background:none; color:var(--clay); font-size:17px; cursor:pointer; line-height:1;
     width:28px; height:28px; border-radius:var(--radius);
   }
-  .rowbtn:hover{background:var(--clay-soft);}
+  .rowbtn:hover{background:var(--clay-soft);} .linkbtn{border:1px solid var(--line); background:var(--paper-raised); color:var(--sage); cursor:pointer; line-height:1; width:26px; height:26px; border-radius:var(--radius); font-size:14px; flex-shrink:0;} .linkbtn:hover{background:var(--sage-soft); border-color:var(--sage);}
   .addbtn{
     margin-top:12px; padding:9px 16px; border:1px solid var(--ink); background:var(--paper-raised);
     color:var(--ink); font-family:var(--sans); font-weight:500; font-size:13px; border-radius:var(--radius); cursor:pointer;
@@ -230,7 +230,7 @@
       </div>
       <div class="field">
         <label for="sourceUrl">Kilde-link (udenlandsk annonce)</label>
-        <input type="url" id="sourceUrl" placeholder="https://...">
+        <div style="display:flex;gap:6px;align-items:center;"><input type="url" id="sourceUrl" placeholder="https://..." style="flex:1;"><button type="button" class="linkbtn no-print" title="Åbn link i ny fane" onclick="const u=document.getElementById('sourceUrl').value; if(u) window.open(u,'_blank');">↗</button>button></div>
       </div>
     </div>
     <div class="field" style="margin-bottom:16px;">
@@ -474,7 +474,7 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, opk
     <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
     <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-opkraevet" value="${opkraevet||''}" step="100" min="0" placeholder="opkrævet afgift"></td><td><input type="number" class="c-andel" value="${andelPct||''}" step="0.1" min="0" placeholder="%"></td>
-    <td><input type="url" class="c-link" value="${link||''}" placeholder="link"></td>
+    <td><div style="display:flex;gap:4px;align-items:center;"><input type="url" class="c-link" value="${link||''}" placeholder="link" style="flex:1;min-width:60px;"><button type="button" class="linkbtn no-print" title="Åbn link" onclick="const u=this.previousElementSibling.value; if(u) window.open(u,'_blank');">↗</button></div></td>
     <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
   document.getElementById('compBody').appendChild(tr);
   tr.querySelectorAll('input, select').forEach(el => el.addEventListener('input', renderAll));
