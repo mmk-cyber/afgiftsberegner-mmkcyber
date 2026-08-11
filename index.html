@@ -193,12 +193,19 @@
     cabriolet, stationcar ELLER sedan (set i praksis for AMG C63 S). Åbn hver enkelt bils
     side og tjek feltet "Stamdata → TYPE" (fx "Coupé, 2 døre, passagerer") for at bekræfte
     det faktiske karosseri, FØR bilen bruges som sammenligning.
-  - I "Model"-multiselect-feltet i avanceret søgning: vælg ALLE stavevarianter af den
-    relevante performance-variant (fx for AMG C 63 S: "AMG C 63 S", "AMG C 63S",
-    "C 63 AMG S" osv., med/uden mellemrum, AMG før/efter modelnavn) — ellers overses
-    reelle biler. UI'ets multiselect kan miste tidligere valg, hvis du klikker/genskriver i
-    feltet — byg i stedet søge-URL'en direkte med flere model_in[]=... parametre for
-    pålidelighed (fx ?model_in[]=AMG+C+63+S&model_in[]=AMG+C+63S&...).
+    - KRITISK, GÆLDER ALTID (ikke kun performance-varianter): bilopslag.nu registrerer ofte
+      samme fysiske model under FLERE forskellige stavevarianter i "Model"-feltet (mellemrum/
+      ikke, store/små bogstaver, med/uden suffiks). Søg derfor FØRST bredt på et kort
+      stammeord (fx "850", "C 63", "M4") for at se ALLE tilgængelige varianter i dropdownet,
+      gennemgå listen manuelt, og vælg/kombinér ALLE varianter der reelt matcher brugerens
+      motor/effekt/trim — men UDELAD varianter der er en anden model eller forkert karosseri
+      (fx "M8" er en anden model end "M850i"; en "... Cab"-variant er forkert, hvis brugerens
+      bil ikke er cabriolet). Eksempel fra praksis: søgning på kun "M850i xDrive" gav 12
+      resultater, mens alle relevante stavevarianter tilsammen ("M850i", "M850 i xDrive",
+      "M850i xDrive", "M850i XDrive") gav 33 — næsten tre gange så mange kandidater. UI'ets
+      multiselect kan miste tidligere valg, hvis du klikker/genskriver i feltet — byg i stedet
+      søge-URL'en direkte med flere model_in[]=... parametre for pålidelighed (fx
+      ?model_in[]=M850i&model_in[]=M850+i+xDrive&model_in[]=M850i+xDrive&model_in[]=M850i+XDrive).
   - Hvis en bils "Registreringsafgift"-sektion har flere rækker (leasing-genberegninger over
     tid), brug den SENESTE (nyeste dato) som sammenligningsdata — det er den mest aktuelle
     vurdering af bilens værdi.
