@@ -153,6 +153,16 @@
   internetadgang eller søgefunktion — sammenligningstabellen skal udfyldes manuelt, typisk ved
   at du (Claude) finder data via Claude for Chrome og taster det ind for brugeren. VÆRKTØJETS PLACERING & DEPLOYMENT: Denne side hostes via GitHub Pages fra det PRIVATE repo "mmk-cyber/afgiftsberegner-mmkcyber" (branch: main), filen er index.html i repo-roden. Ændringer laves ved at redigere index.html direkte i GitHub's webeditor (github.com/mmk-cyber/afgiftsberegner-mmkcyber/edit/main/index.html) via den forbundne Chrome-browser og committe til main — Pages opdaterer automatisk. Test ALTID ændringer i en skjult iframe (srcdoc = ny kilde) og tjek for JS-fejl FØR du committer, særligt at ingen tilbageværende kode refererer til fjernede element-ID'er.
 
+  DELING AF EN SAG PÅ TVÆRS AF ENHEDER: Knappen "Kopiér link til denne sag" (ved siden af Print-knappen)
+  koder al indtastet data (bil + alle sammenligninger + leasingforudsætninger) som JSON ind i
+  URL'ens hash (#sag=...) og kopierer det fulde link til udklipsholderen. Åbnes dette link på en
+  anden computer/browser, indlæses samme sag automatisk (loadStateFromHash() kører ved page-load,
+  før renderAll()) — ingen server/backend er involveret, det er ren klient-side state i URL'en
+  (GitHub Pages sender aldrig hash-fragmentet til serveren). Marco skal altså gemme/dele selve
+  linket (fx i en note eller besked til sig selv), ikke bare den blanke værktøjs-URL, for at kunne
+  genskabe en beregnet sag på en anden PC. Værktøjet har STADIG ingen egen internetadgang — dette
+  løser kun "samme resultat på en anden enhed", ikke automatisk indhentning af sammenligningsdata.
+
   FAST FREMGANGSMÅDE FOR SAMMENLIGNINGSDATA, I DENNE RÆKKEFØLGE:
   1. Søg FØRST på Bilbasen.dk og DBA.dk efter TOTALPRISER (inkl. moms og afgift) for
      sammenlignelige, allerede danske-indregistrerede biler.
@@ -173,6 +183,12 @@
   - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
     eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
     godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
+  - VIGTIGT, LÆRT AF FEJL I PRAKSIS: Bilbasens/DBA's søgeresultat-KORT viser ikke altid
+    pålideligt en "(Uden afgift)"/"(Engros/CVR)"-markering, selvom annoncen rent faktisk er
+    det — teksten står nogle gange kun i selve annoncens BESKRIVELSE (fx "INCL. moms/Uden
+    afgift." eller "Sælges engros til CVR-nummer uden reklamationsret"), ikke i søgeresultat-
+    listens prisfelt. ÅBN DERFOR HVER ENKELT ANNONCE OG LÆS BESKRIVELSEN, før den bruges som
+    sammenligning — stol ikke kun på søgeresultat-listens tags.
   - Udfyld ALTID linket til hver sammenligning, ikke kun pris/dato/km. Udfyld OGSÅ feltet "Værdi u. afgift" for hver sammenligning (hentes fra bilopslag.nu's Registreringsafgift-sektion, seneste vurderingsrække) — Flexleasing-kortets restværdi beregnes automatisk ud fra disse værdier (nærmeste km-match), og uden mindst én udfyldt værdi bliver restværdien 0 kr. Bemærk at Flexleasing-ydelsen (§3b) udelukkende er afgift + rentetillæg — bilfinansiering er kun en orienterende info-linje og indgår IKKE i den viste ydelse; rør ikke ved denne adskillelse, medmindre brugeren eksplicit beder om det. VIGTIGT OM MOMS: "Værdi u. afgift" fra bilopslag.nu er allerede INKL. moms (jf. Motorstyrelsens definition af afgiftspligtig værdi: "bilens almindelige pris inkl. moms, men uden registreringsafgift") — gang IKKE denne værdi med 1,25 for at få en "inkl. moms"-figur, det ville dobbelttælle momsen. Skal en eksl.-moms-værdi bruges, DIVIDÉR med 1,25 i stedet. Ved print/PDF får sammenligningssektionen automatisk sideskift og præfikset Bilag: foran overskriften (styret af #comparisonsHeading i print-CSS'en), så alle sammenligningsgrundlagene altid følger med som bilag – tilføj derfor altid sammenligningerne i selve værktøjet, ikke kun i chatten. Ved brug af bilopslag.nu: tjek altid EFFEKT (HK/kW) i hver kandidats Teknik/Stamdata-sektion, ikke kun VIN-præfiks eller Variant-tekst, da biler med samme VIN-præfiks/variant-navn kan være forskellige effekt-varianter, fx BMW M4 vs. M4 Competition. UDFYLD OGSÅ (hvis synlige på bilopslag.nu's Registreringsafgift-sektion) felterne "Opkrævet afgift (kr.)" og "Andel (%)" for hver sammenligning — disse to felter er rene referencetal (den faktisk opkrævede §3b-periodeafgift og dens andel af restafgiften for den pågældende bils seneste leasingperiode) og indgår IKKE i selve beregningen, men bruges af værktøjet til at vise en gennemsnitlig sanity-check-sætning under sammenligningstabellen, som brugeren kan sammenligne med værktøjets egen beregnede §3b-sats.
 
   KENDTE FALDGRUBER (fundet i praksis, undgå at gentage dem):
@@ -235,6 +251,16 @@
     </div>
     <div class="meta" id="reportDate"></div>
   </header>
+
+  <div class="card">
+    <h2>Automatisk opslag <span class="footnote" style="font-weight:400;">(valgfrit, kræver backend)</span></h2>
+    <p class="sub">Indsæt et link (fx mobile.de) eller fritekst (fx "BMW 335i Cabriolet 2010, kørt 175000 km"). Henter og udfylder felterne nedenfor automatisk — tjek altid resultatet, det er et udgangspunkt, ikke et facit.</p>
+    <div style="display:flex; gap:8px; align-items:flex-start;">
+      <input type="text" id="autoInput" placeholder="Link eller fritekst om bilen..." style="flex:1;">
+      <button type="button" class="primary" id="autoFetchBtn" style="white-space:nowrap;">Hent automatisk</button>
+    </div>
+    <div id="autoFetchStatus" class="footnote" style="margin-top:8px;"></div>
+  </div>
 
   <div class="card">
     <h2>Køretøj</h2>
@@ -335,7 +361,8 @@
 
   <div class="card no-print">
     <button class="primary" id="printBtn" type="button">Print / Gem som PDF</button>
-    <span class="footnote" style="margin-left:12px;">Åbner din browsers udskriftsdialog — vælg "Gem som PDF" som printer.</span>
+    <button class="primary ghost" id="shareBtn" type="button" style="margin-left:10px;">Kopiér link til denne sag</button>
+    <span class="footnote" style="margin-left:12px;">Åbner din browsers udskriftsdialog — vælg "Gem som PDF" som printer. "Kopiér link" gemmer hele sagen (bil + sammenligninger) i linket, så du kan åbne den samme sag fra en anden computer.</span>
   </div>
 
   <div class="resultgrid">
@@ -385,6 +412,56 @@
 </div>
 
 <script>
+// ---------------- Automatisk opslag (valgfri backend) ----------------
+// Udfyld med jeres Render.com-URL (eller anden host), NÅR backend er deployet — se
+// afgiftsberegner-backend/README.md. Så længe denne er tom, er "Hent automatisk" en
+// no-op med en forklarende besked, resten af værktøjet virker som altid uden den.
+const BACKEND_URL = '';
+
+async function autoFetch(){
+  const statusEl = document.getElementById('autoFetchStatus');
+  const input = document.getElementById('autoInput').value.trim();
+  if(!input){ statusEl.textContent = 'Indsæt et link eller en beskrivelse først.'; return; }
+  if(!BACKEND_URL){
+    statusEl.textContent = 'Backend ikke konfigureret endnu (BACKEND_URL er tom i kildekoden) — se afgiftsberegner-backend/README.md for opsætning. Indtast bilens data manuelt herunder i mellemtiden.';
+    return;
+  }
+  statusEl.textContent = 'Henter og beregner — kan tage op til et minut...';
+  const btn = document.getElementById('autoFetchBtn');
+  btn.disabled = true;
+  try{
+    const resp = await fetch(BACKEND_URL.replace(/\/$/,'') + '/beregn', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ input, months: parseFloat(document.getElementById('months').value)||12,
+        downpct: parseFloat(document.getElementById('downpct').value)||10,
+        rate: parseFloat(document.getElementById('rate').value)||6,
+        restRente: parseFloat(document.getElementById('restRente').value)||3.8 })
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error((err.detail && err.detail.message) || `Serverfejl (${resp.status})`);
+    }
+    const data = await resp.json();
+    document.getElementById('carName').value = data.car.carName || '';
+    document.getElementById('co2').value = data.car.co2 || '';
+    document.getElementById('ageMonths').value = data.car.ageMonths || '';
+    document.getElementById('kmStand').value = data.car.kmStand || '';
+    document.getElementById('sourceUrl').value = input.startsWith('http') ? input : '';
+
+    document.getElementById('compBody').innerHTML = '';
+    (data.comparisons || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct));
+    renderAll();
+
+    const warn = (data.warnings && data.warnings.length) ? ('Bemærk: ' + data.warnings.join(' ')) : '';
+    statusEl.textContent = `Hentet ${ (data.comparisons||[]).length } sammenligninger. Tjek dem herunder og ret hvad der er forkert, før du bruger resultatet. ${warn}`;
+  } catch(e){
+    statusEl.textContent = 'Kunne ikke hente automatisk (' + e.message + '). Udfyld felterne manuelt herunder i stedet.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ---------------- 2026 satser ----------------
 const RATES = {
   band1: 76400, band2: 237400,
@@ -586,6 +663,92 @@ function deriveResidualValueCombined(comparisons, targetKm, exAfgiftValue, ageMo
   return { value: combined, methodA, methodB, methodC, source: methodAInfo.source, count: vals.length };
 }
 
+// ---------------- Del/gem sag via URL (ingen server nødvendig — alt state ligger i URL-hash'et) ----------------
+function serializeState(){
+  const comps = Array.from(document.querySelectorAll('#compBody tr')).map(tr => ({
+    kilde: tr.querySelector('.c-kilde').value,
+    beskrivelse: tr.querySelector('.c-beskrivelse').value,
+    pris: tr.querySelector('.c-pris').value,
+    dato: tr.querySelector('.c-dato').value,
+    km: tr.querySelector('.c-km').value,
+    vaerdiUAfgift: tr.querySelector('.c-vaerdiuafgift').value,
+    regafgift: tr.querySelector('.c-regafgift').value,
+    opkraevet: tr.querySelector('.c-opkraevet').value,
+    andelPct: tr.querySelector('.c-andel').value,
+    link: tr.querySelector('.c-link').value,
+  }));
+  return {
+    v: 1,
+    carName: document.getElementById('carName').value,
+    sourceUrl: document.getElementById('sourceUrl').value,
+    fuelDisplay: fuelDisplay,
+    co2: document.getElementById('co2').value,
+    ageMonths: document.getElementById('ageMonths').value,
+    kmStand: document.getElementById('kmStand').value,
+    co2Source: document.getElementById('co2Source').value,
+    months: document.getElementById('months').value,
+    downpct: document.getElementById('downpct').value,
+    rate: document.getElementById('rate').value,
+    restRente: document.getElementById('restRente').value,
+    comps
+  };
+}
+
+function setFuelByDisplay(display){
+  const btn = Array.from(document.querySelectorAll('#fuelSeg button')).find(b => b.dataset.display === display) || document.querySelector('#fuelSeg button');
+  document.querySelectorAll('#fuelSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  fuel = btn.dataset.fuel;
+  fuelDisplay = btn.dataset.display;
+  document.getElementById('co2FieldWrap').style.display = (fuel === 'ev') ? 'none' : 'block';
+}
+
+function applyState(state){
+  document.getElementById('carName').value = state.carName || '';
+  document.getElementById('sourceUrl').value = state.sourceUrl || '';
+  document.getElementById('co2').value = state.co2 || '';
+  document.getElementById('ageMonths').value = state.ageMonths || '';
+  document.getElementById('kmStand').value = state.kmStand || '';
+  document.getElementById('co2Source').value = state.co2Source || '';
+  document.getElementById('months').value = state.months || '12';
+  document.getElementById('downpct').value = state.downpct || '10';
+  document.getElementById('rate').value = state.rate || '6';
+  document.getElementById('restRente').value = state.restRente || '3.8';
+  setFuelByDisplay(state.fuelDisplay || 'Benzin');
+
+  document.getElementById('compBody').innerHTML = '';
+  (state.comps || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct));
+}
+
+function loadStateFromHash(){
+  if(location.hash.indexOf('#sag=') === 0){
+    try {
+      const json = decodeURIComponent(location.hash.slice(5));
+      const state = JSON.parse(json);
+      applyState(state);
+      return true;
+    } catch(e){
+      console.error('Kunne ikke indlæse sag fra link', e);
+    }
+  }
+  return false;
+}
+
+function shareStateLink(){
+  const state = serializeState();
+  const encoded = encodeURIComponent(JSON.stringify(state));
+  const url = location.origin + location.pathname + '#sag=' + encoded;
+  history.replaceState(null, '', url);
+  const btn = document.getElementById('shareBtn');
+  const orig = btn.textContent;
+  const showDone = () => { btn.textContent = 'Link kopieret!'; setTimeout(()=>{ btn.textContent = orig; }, 1800); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(showDone).catch(() => { window.prompt('Kopiér linket manuelt:', url); showDone(); });
+  } else {
+    window.prompt('Kopiér linket manuelt:', url);
+    showDone();
+  }
+}
 
 function renderConfidenceBanner(market, count){
   const el = document.getElementById('confidenceBanner');
@@ -683,6 +846,8 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
 // ---------------- Events ----------------
 document.getElementById('addCompBtn').addEventListener('click', () => { addCompRow(); renderAll(); });
 document.getElementById('printBtn').addEventListener('click', () => window.print());
+document.getElementById('shareBtn').addEventListener('click', shareStateLink);
+document.getElementById('autoFetchBtn').addEventListener('click', autoFetch);
 
 document.querySelectorAll('#fuelSeg button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -701,6 +866,7 @@ document.querySelectorAll('#fuelSeg button').forEach(btn=>{
 
 document.getElementById('reportDate').textContent = 'Genereret ' + new Date().toLocaleDateString('da-DK', { year:'numeric', month:'long', day:'numeric' });
 
+loadStateFromHash();
 renderAll();
 </script>
 </body>
