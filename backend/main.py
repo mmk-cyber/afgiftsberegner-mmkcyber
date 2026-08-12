@@ -69,6 +69,17 @@ def parse_free_text(text: str) -> dict:
     # reg. 05/", 0 resultater). Fjern derfor eksplicit "reg."-datoangivelser og efterladte
     # tal/skråstreger for enden, FØR vi bruger teksten som søgestreng.
     name_part = re.sub(r"\b\d{1,2}\.?\s*reg(?:istrering)?\.?", "", name_part, flags=re.IGNORECASE)
+    # RETTET, ny fejl fundet i praksis: når teksten IKKE indeholder et årstal (fx "BMW X5 45e,
+    # kørt 90.000 km fra ny"), blev intet afskåret ovenfor, så hele "kørt 90.000 km fra ny" blev
+    # stående i bilnavnet og indgik i selve Bilbasen/DBA-søgestrengen — søgningen ledte reelt
+    # efter en bil hvis beskrivelse indeholder ordene "kørt", "90000", "fra" og "ny", hvilket intet
+    # rigtigt opslag matcher, og gav 0 resultater for en helt almindelig, findbar bil. "kørt"/
+    # "kørt"-tastefejlen "kært" markerer på dansk ALTID starten på kilometer-/tilstandsangivelsen
+    # i en annoncetekst og er aldrig en del af mærke/model-navnet — afskær derfor hårdt her, uanset
+    # om der findes et årstal i teksten eller ej.
+    kort_match = re.search(r"\bk[øæ]rt\b", name_part, re.IGNORECASE)
+    if kort_match:
+        name_part = name_part[: kort_match.start()]
     name_part = re.sub(r"[\d./]+\s*$", "", name_part)
     name_part = name_part.strip(" ,.-/")
     return {"carName": name_part or text.strip(), "year": year, "km": km_val}
