@@ -457,6 +457,31 @@ def _detect_fuel_type(text: str) -> Optional[dict]:
     return None
 
 
+def detect_fuel_from_bilbasen_dba_text(text: str) -> Optional[dict]:
+    """
+    Best-effort udtræk af drivmiddel fra et Bilbasen/DBA-søgeresultat-korts RÅ tekst (fx
+    RawListing.body_type_text), som allerede indeholder en dansk drivmiddel-mærkat i selve
+    korttekstet (set i praksis: "...km rækkevidde\\n47,6 km/l\\nPlug-in\\n...", "...\\nEl\\n...",
+    "...2998 cc ∙ Diesel ∙...", "...Benzin ∙...").
+
+    Bruges til at gætte drivmiddel ved STRUKTURERET/fritekst-opslag (mærke/model-søgning), hvor
+    der — modsat link-opslag på en enkelt udenlandsk annonce — ikke findes én bestemt annonce-
+    side at hente et "Kraftstoffart"-felt fra (se _detect_fuel_type ovenfor). I stedet bruges
+    Bilbasen/DBA's egne søgeresultat-kort som kilde; main.py tager flertallet blandt de fundne
+    (allerede år/mærke/variant-filtrerede) sammenligninger som bedste gæt.
+    """
+    t = text.lower()
+    if re.search(r"\bplug-?in\b", t):
+        return {"fuel": "phev", "display": "Plugin-hybrid"}
+    if re.search(r"\bel\b", t):
+        return {"fuel": "ev", "display": "Elbil"}
+    if re.search(r"\bdiesel\b", t):
+        return {"fuel": "konventionel", "display": "Diesel"}
+    if re.search(r"\bbenzin\b", t):
+        return {"fuel": "konventionel", "display": "Benzin"}
+    return None
+
+
 async def fetch_foreign_listing(url: str) -> dict:
     """
     Best-effort udtræk af mærke/model/km/år/CO2 fra en udenlandsk annonce (fx mobile.de).

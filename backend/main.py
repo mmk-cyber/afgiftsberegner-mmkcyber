@@ -279,6 +279,36 @@ async def beregn(req: BeregnRequest):
                 "er for få resultater tilbage."
             )
 
+    # DRIVMIDDEL ved STRUKTURERET/fritekst-opslag, tilføjet efter fund i praksis: en elbil (BMW
+    # iX3) blev søgt via mærke/model-felterne (ikke link), og her findes ingen enkelt annonce-
+    # side at hente et "Kraftstoffart"-felt fra, som ved link-opslag ovenfor. Bilbasen/DBA's egne
+    # søgeresultat-kort viser dog selv en drivmiddel-mærkat i den rå korttekst ("Plug-in", "El",
+    # "Diesel", "Benzin") — brug flertallet blandt de fundne (allerede år/mærke/variant-
+    # filtrerede) sammenligninger som bedste gæt, og advar hvis intet entydigt kunne bestemmes.
+    if not is_link:
+        counts: dict[str, int] = {}
+        displays: dict[str, str] = {}
+        for r in usable:
+            fi = scraper.detect_fuel_from_bilbasen_dba_text(r.body_type_text or r.beskrivelse)
+            if fi:
+                counts[fi["fuel"]] = counts.get(fi["fuel"], 0) + 1
+                displays[fi["fuel"]] = fi["display"]
+        if counts:
+            top_fuel = max(counts, key=counts.get)
+            fuel_type = top_fuel
+            fuel_display = displays[top_fuel]
+            if len(counts) > 1:
+                warnings.append(
+                    f"Sammenligningerne pegede på flere forskellige drivmidler — brugte flertallet "
+                    f"('{fuel_display}'). Tjek 'Drivmiddel' i Køretøj-sektionen er korrekt."
+                )
+        else:
+            warnings.append(
+                "Kunne ikke bestemme drivmiddel (benzin/diesel/plugin-hybrid/el) automatisk ud fra "
+                "søgeresultaterne — tjek 'Drivmiddel' i Køretøj-sektionen er sat korrekt, ellers "
+                "bliver afgiften forkert (især for el/plugin-hybrid)."
+            )
+
     comparisons: list[calc.Comparison] = []
     for r in usable:
         comparisons.append(calc.Comparison(
