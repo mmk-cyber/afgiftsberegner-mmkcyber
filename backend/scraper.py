@@ -131,12 +131,21 @@ async def check_listing_body_and_tax_status(page: Page, url: str, expected_body:
 
     if expected_body:
         wrong_words = WRONG_BODY_HINTS.get(expected_body.lower(), [])
-        # Kun ekskludér på karosseri, hvis en tydelig MODSAT betegnelse findes i overskriften
-        # (ikke i hele body_text, som kan nævne "Touring" i fx udstyrslisten/tilbehør).
+        # Kun ekskludér på karosseri, hvis en tydelig MODSAT betegnelse findes i sidens <title>
+        # (ikke i hele body_text, som kan nævne "Touring" i fx udstyrslisten/tilbehør eller
+        # "lignende annoncer"). VIGTIGT, fundet i praksis: DBA's <h1> indeholder KUN mærke/model
+        # (fx "BMW 335i"), ALDRIG karosseri — <title> derimod har det pålideligt for begge sider
+        # (fx "... - Coupé | DBA.dk" / "Brugt BMW 335i 3,0 Cabriolet DKG 2d - Bilbasen"). Brug
+        # derfor <title>, ikke <h1>, som første forsøg.
         try:
-            title_text = (await page.inner_text("h1")).lower()
+            title_text = (await page.title()).lower()
         except Exception:
-            title_text = body_text[:300]
+            title_text = ""
+        if not title_text:
+            try:
+                title_text = (await page.inner_text("h1")).lower()
+            except Exception:
+                title_text = body_text[:300]
         for w in wrong_words:
             if w in title_text:
                 return True, f"karosseri ser forkert ud ('{w}' fundet i overskrift, forventede {expected_body})"
