@@ -127,6 +127,20 @@ async def beregn(req: BeregnRequest):
     if excluded_count:
         warnings.append(f"{excluded_count} annoncer sorteret fra (forkert karrosseri, Uden afgift, eller Engros/CVR).")
 
+    # SIKKERHEDSNET, tilføjet efter en fejl i praksis: hvis søge-URL'en af en eller anden grund
+    # rammer forkert (fx et ugyldigt mærke-slug, der får siden til at redirecte til en generel
+    # "alle biler"-liste), skal vi ALDRIG stille aflevere fuldstændig urelaterede biler som
+    # "sammenligninger" — det er værre end at finde for få. Kræv derfor at mærkenavnet rent
+    # faktisk indgår i beskrivelsen, før en sammenligning bruges.
+    if maerke:
+        mismatched = [r for r in usable if maerke.lower() not in r.beskrivelse.lower()]
+        if mismatched:
+            usable = [r for r in usable if maerke.lower() in r.beskrivelse.lower()]
+            warnings.append(
+                f"{len(mismatched)} fundne biler matchede ikke mærket '{maerke}' og blev kasseret "
+                "som sikkerhedsforanstaltning — søgningen kan være gået forkert. Overvej at søge manuelt."
+            )
+
     comparisons: list[calc.Comparison] = []
     for r in usable:
         comparisons.append(calc.Comparison(

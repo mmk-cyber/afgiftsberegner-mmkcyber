@@ -155,9 +155,19 @@ async def check_listing_body_and_tax_status(page: Page, url: str, expected_body:
 
 async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] = None,
                            max_candidates: int = 15) -> list[RawListing]:
+    # KRITISK FIX, fundet i praksis: den tidligere URL brugte mærke/model direkte som sti-segmenter
+    # (/brugt/bil/<maerke>/<model>), hvilket kræver at man kender Bilbasens PRÆCISE interne slug
+    # for hvert mærke (fx er "mercedes-benz" IKKE gyldig — det er ukendt hvad den rigtige er uden
+    # at teste hvert mærke). Er slugget forkert, REDIRECTER Bilbasen stille til den generelle
+    # "alle biler i Danmark"-liste (40.000+ biler) i stedet for at fejle — hvilket førte til at
+    # scraperen leverede fuldstændig urelaterede biler (Citroën, Porsche, Renault m.fl.) som
+    # "sammenligninger" for en Mercedes-forespørgsel. Løsning: brug Bilbasens egen fritekstsøgning
+    # (samme felt som en bruger selv ville skrive i), som er markant mere robust og ikke kræver
+    # at kende exakte slugs. Bekræftet manuelt: ?free=bmw+335i giver 13 korrekte BMW 335i-resultater,
+    # ?free=Mercedes-Benz+CLA giver 61 korrekte Mercedes CLA-resultater.
     url = (
-        f"https://www.bilbasen.dk/brugt/bil/{quote(maerke.lower())}/{quote(model.lower())}"
-        f"?includeengroscvr=true&includeleasing=false"
+        f"https://www.bilbasen.dk/brugt/bil?free={quote(f'{maerke} {model}'.strip())}"
+        f"&includeengroscvr=true&includeleasing=false"
     )
     async with async_playwright() as p:
         browser = await p.chromium.launch(
