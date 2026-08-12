@@ -260,11 +260,30 @@
 
   <div class="card">
     <h2>Automatisk opslag <span class="footnote" style="font-weight:400;">(valgfrit, kræver backend)</span></h2>
-    <p class="sub">Indsæt et link (fx mobile.de) eller fritekst (fx "BMW 335i Cabriolet 2010, kørt 175000 km"). Henter og udfylder felterne nedenfor automatisk — tjek altid resultatet, det er et udgangspunkt, ikke et facit.</p>
-    <div style="display:flex; gap:8px; align-items:flex-start;">
-      <input type="text" id="autoInput" placeholder="Link eller fritekst om bilen..." style="flex:1;">
-      <button type="button" class="primary" id="autoFetchBtn" style="white-space:nowrap;">Hent automatisk</button>
+    <p class="sub">Enten: indsæt et link til annoncen (fx mobile.de) — ELLER: udfyld mærke, model/variant, km-stand og årgang herunder. Er linkfeltet udfyldt, bruges det; ellers bruges felterne. Henter og udfylder resten automatisk — tjek altid resultatet, det er et udgangspunkt, ikke et facit.</p>
+    <div class="field" style="margin-bottom:14px;">
+      <label for="autoLink">Link til annonce (valgfrit)</label>
+      <input type="text" id="autoLink" placeholder="fx https://suchen.mobile.de/...">
     </div>
+    <div class="grid" style="grid-template-columns: 1.2fr 1.4fr .8fr .8fr; gap:12px; margin-bottom:16px;">
+      <div class="field">
+        <label for="autoMaerke">Bilmærke</label>
+        <input type="text" id="autoMaerke" placeholder="fx BMW">
+      </div>
+      <div class="field">
+        <label for="autoModel">Model / variant</label>
+        <input type="text" id="autoModel" placeholder="fx X5 45e">
+      </div>
+      <div class="field">
+        <label for="autoKm">Km-stand</label>
+        <input type="number" id="autoKm" placeholder="fx 90000">
+      </div>
+      <div class="field">
+        <label for="autoYear">Årgang</label>
+        <input type="number" id="autoYear" placeholder="fx 2020">
+      </div>
+    </div>
+    <button type="button" class="primary" id="autoFetchBtn" style="white-space:nowrap;">Hent automatisk</button>
     <div id="autoFetchStatus" class="footnote" style="margin-top:8px;"></div>
   </div>
 
@@ -426,8 +445,21 @@ const BACKEND_URL = 'https://afgiftsberegner-mmkcyber.onrender.com';
 
 async function autoFetch(){
   const statusEl = document.getElementById('autoFetchStatus');
-  const input = document.getElementById('autoInput').value.trim();
-  if(!input){ statusEl.textContent = 'Indsæt et link eller en beskrivelse først.'; return; }
+  // Foretræk link, hvis udfyldt (mest præcist — henter direkte fra annoncen). Ellers bruges de
+  // strukturerede felter (mærke/model/km/årgang), som er RETTET til at være det primære, robuste
+  // opslagsflow — den gamle fritekst-parsing (parse_free_text i backend) gav gentagne fejl i
+  // praksis, hvor ord som "kørt" og løsrevne km-tal endte i selve søgestrengen og gav falske
+  // 0-resultater. Strukturerede felter fjerner behovet for at gætte, hvad der er mærke/model.
+  const link = document.getElementById('autoLink').value.trim();
+  const maerke = document.getElementById('autoMaerke').value.trim();
+  const model = document.getElementById('autoModel').value.trim();
+  const km = document.getElementById('autoKm').value.trim();
+  const year = document.getElementById('autoYear').value.trim();
+
+  if(!link && !maerke){
+    statusEl.textContent = 'Indsæt enten et link til annoncen, eller udfyld mindst bilmærke herunder.';
+    return;
+  }
   if(!BACKEND_URL){
     statusEl.textContent = 'Backend ikke konfigureret endnu (BACKEND_URL er tom i kildekoden) — se afgiftsberegner-backend/README.md for opsætning. Indtast bilens data manuelt herunder i mellemtiden.';
     return;
@@ -436,13 +468,18 @@ async function autoFetch(){
   const btn = document.getElementById('autoFetchBtn');
   btn.disabled = true;
   try{
+    const body = link
+      ? { input: link }
+      : { input: '', maerke, model, km: km ? parseFloat(km) : null, year: year ? parseInt(year) : null };
+    body.months = parseFloat(document.getElementById('months').value)||12;
+    body.downpct = parseFloat(document.getElementById('downpct').value)||10;
+    body.rate = parseFloat(document.getElementById('rate').value)||6;
+    body.restRente = parseFloat(document.getElementById('restRente').value)||3.8;
+
     const resp = await fetch(BACKEND_URL.replace(/\/$/,'') + '/beregn', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ input, months: parseFloat(document.getElementById('months').value)||12,
-        downpct: parseFloat(document.getElementById('downpct').value)||10,
-        rate: parseFloat(document.getElementById('rate').value)||6,
-        restRente: parseFloat(document.getElementById('restRente').value)||3.8 })
+      body: JSON.stringify(body)
     });
     if(!resp.ok){
       const err = await resp.json().catch(()=>({}));
@@ -453,7 +490,7 @@ async function autoFetch(){
     document.getElementById('co2').value = data.car.co2 || '';
     document.getElementById('ageMonths').value = data.car.ageMonths || '';
     document.getElementById('kmStand').value = data.car.kmStand || '';
-    document.getElementById('sourceUrl').value = input.startsWith('http') ? input : '';
+    document.getElementById('sourceUrl').value = link || '';
 
     document.getElementById('compBody').innerHTML = '';
     (data.comparisons || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct));

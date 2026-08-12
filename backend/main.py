@@ -37,7 +37,14 @@ app.add_middleware(
 
 
 class BeregnRequest(BaseModel):
-    input: str
+    # "input": link ELLER fritekst — bagudkompatibel fritekst-vej (bruges bl.a. når Claude i en
+    # chat-samtale indsætter et link manuelt som backup). Tom streng hvis de strukturerede felter
+    # (maerke/model/year/km) bruges i stedet fra den nye UI — se note ved is_link/elif nedenfor.
+    input: str = ""
+    maerke: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    km: Optional[float] = None
     co2: Optional[float] = None
     fuel_type: str = "konventionel"
     months: float = 12
@@ -125,6 +132,21 @@ async def beregn(req: BeregnRequest):
         if not foreign["co2"]:
             warnings.append("Kunne ikke finde CO2 på annoncen — brug dansk sammenligningsbils CO2 i stedet, jf. fast praksis.")
         age_months = None  # kendes typisk ikke præcist fra en udenlandsk annonce alene
+    elif req.maerke:
+        # STRUKTURERET INPUT — ny, foretrukken vej fra UI'en (mærke/model/km/årgang som separate
+        # felter i stedet for fritekst). Tilføjet efter gentagne fejl i praksis, hvor fritekst-
+        # parseren (parse_free_text nedenfor) fejlagtigt lod ord som "kørt", løsrevne km-tal og
+        # "fra"/"ny" indgå i selve søgestrengen til Bilbasen/DBA og gav falske 0-resultater, selv
+        # for helt almindelige, findbare biler. Strukturerede felter fjerner hele denne fejlklasse,
+        # da vi her ALDRIG skal gætte hvad der er mærke/model og hvad der er fyldord.
+        car_name = f"{req.maerke.strip()} {(req.model or '').strip()}".strip()
+        km = req.km or 0
+        co2 = req.co2 or 0
+        age_months = months_since(req.year)
+        if not req.year:
+            warnings.append("Ingen årgang angivet — alder kunne ikke bestemmes automatisk, ret feltet manuelt.")
+        if co2 == 0:
+            warnings.append("Intet CO2-tal angivet — udfyld manuelt, ellers bliver afgiften forkert.")
     else:
         parsed = parse_free_text(req.input)
         car_name = parsed["carName"]
