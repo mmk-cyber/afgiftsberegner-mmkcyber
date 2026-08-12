@@ -74,14 +74,25 @@
   .seg button:last-child{border-right:none;}
   .seg button.active{background:var(--ink); color:var(--paper);}
 
-  table.comp{width:100%; border-collapse:collapse; font-size:13.5px;}
+  .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px;}
+  table.comp{width:100%; min-width:1060px; border-collapse:collapse; font-size:13.5px;}
   table.comp th{
     text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--muted); font-weight:500; padding:0 8px 8px 0; border-bottom:1px solid var(--line);
   }
   table.comp td{padding:6px 8px 6px 0; vertical-align:middle;}
   table.comp tr + tr td{border-top:1px solid var(--line);}
-  table.comp input, table.comp select{padding:7px 8px; font-size:13px;}
+  table.comp input, table.comp select{padding:7px 8px; font-size:13px; width:100%; box-sizing:border-box; min-width:0;}
+  /* Numeriske kolonner (pris, km, værdi u. afgift osv.) blev fundet i praksis for smalle til at
+     vise et helt tal — fx "424900" blev klippet til "42490" i visningen (selve tallet og
+     beregningen var korrekt, det var kun visningen der var for smal). Faste px-bredder herunder,
+     kombineret med tabellens min-width og .table-scroll (vandret scroll i stedet for at klemme
+     kolonnerne sammen på smalle skærme), sikrer plads til mindst 7 cifre. */
+  table.comp th.col-kilde{width:100px;} table.comp th.col-pris{width:110px;}
+  table.comp th.col-dato{width:75px;} table.comp th.col-km{width:95px;}
+  table.comp th.col-vuafgift{width:110px;} table.comp th.col-regafgift{width:120px;}
+  table.comp th.col-opkraevet{width:110px;} table.comp th.col-andel{width:70px;}
+  table.comp th.col-link{width:100px;} table.comp th.col-remove{width:30px;}
   .rowbtn{
     border:none; background:none; color:var(--clay); font-size:17px; cursor:pointer; line-height:1;
     width:28px; height:28px; border-radius:var(--radius);
@@ -144,6 +155,11 @@
     input, select, textarea{border:none; background:none; padding:2px 0;}
     .rowbtn, .addbtn{display:none;} #comparisonsHeading{page-break-before:always;} #comparisonsHeading::before{content:"Bilag: ";}
     header.masthead{border-bottom:2px solid #000;}
+    /* På print/PDF er siden allerede fuld bredde (.wrap ovenfor), så den faste min-width og
+       vandrette scroll fra skærmvisningen er hverken nødvendig eller ønsket her — den ville i
+       værste fald klippe kolonner af på tværs af sider. Lad tabellen bruge normal, flydende bredde. */
+    .table-scroll{overflow-x:visible;}
+    table.comp{min-width:0;}
   }
 </style>
 <!--
@@ -341,21 +357,23 @@
     <h2 id="comparisonsHeading">Sammenligningsgrundlag — danske biler</h2>
     <p class="sub">Danske referencer, fundet på Bilbasen/DBA (salgsannoncer) eller bilopslag.nu (allerede afgiftsberegnede biler). Alle priser her er <strong>totalpriser inkl. moms og afgift</strong> — værktøjet tilbageregner selv den afgiftspligtige værdi.</p>
     <p class="footnote" style="margin:-8px 0 16px;">Fast metode: søg først Bilbasen + DBA efter totalpriser (ikke "Uden afgift"/engros); brug kun bilopslag.nu som backup, hvis for få gode matches findes der. Samme karosseri hver gang, minimum 3, helst 5+, tættest på årgang/km. Se HTML-kildekoden (øverste kommentar) for fulde instruktioner — en ny Claude-samtale kan læse dem direkte derfra.</p>
+    <div class="table-scroll">
     <table class="comp">
       <thead>
         <tr>
-          <th style="width:16%;">Kilde</th>
+          <th class="col-kilde">Kilde</th>
           <th>Beskrivelse</th>
-          <th style="width:13%;">Pris (kr.)</th>
-          <th style="width:11%;">Dato</th>
-          <th style="width:11%;">Km</th>
-          <th style="width:11%;">Værdi u. afgift</th><th style="width:11%;">Registreringsafgift</th><th style="width:10%;">Opkrævet afgift (kr.)</th><th style="width:7%;">Andel (%)</th>
-          <th style="width:10%;">Link</th>
-          <th style="width:30px;"></th>
+          <th class="col-pris">Pris (kr.)</th>
+          <th class="col-dato">Dato</th>
+          <th class="col-km">Km</th>
+          <th class="col-vuafgift">Værdi u. afgift</th><th class="col-regafgift">Registreringsafgift</th><th class="col-opkraevet">Opkrævet afgift (kr.)</th><th class="col-andel">Andel (%)</th>
+          <th class="col-link">Link</th>
+          <th class="col-remove"></th>
         </tr>
       </thead>
       <tbody id="compBody"></tbody>
     </table>
+    </div>
     <button class="addbtn no-print" id="addCompBtn" type="button">+ Tilføj sammenligning</button>
     <div id="confidenceBanner"></div>
     <div class="basisnote" id="basisNote"></div><div class="basisnote" id="afgiftAndelNote" style="margin-top:4px"></div>
