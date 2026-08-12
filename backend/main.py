@@ -15,6 +15,7 @@ Se README.md for deployment (kræver headless Chromium — se scraper.py's docst
 """
 import asyncio
 import re
+from datetime import date
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
@@ -132,6 +133,7 @@ async def beregn(req: BeregnRequest):
         if not foreign["co2"]:
             warnings.append("Kunne ikke finde CO2 på annoncen — brug dansk sammenligningsbils CO2 i stedet, jf. fast praksis.")
         age_months = None  # kendes typisk ikke præcist fra en udenlandsk annonce alene
+        target_year = None  # kendes ikke fra en udenlandsk annonce alene — årstals-sikkerhedsnettet springes derfor over
     elif req.maerke:
         # STRUKTURERET INPUT — ny, foretrukken vej fra UI'en (mærke/model/km/årgang som separate
         # felter i stedet for fritekst). Tilføjet efter gentagne fejl i praksis, hvor fritekst-
@@ -143,6 +145,7 @@ async def beregn(req: BeregnRequest):
         km = req.km or 0
         co2 = req.co2 or 0
         age_months = months_since(req.year)
+        target_year = req.year
         if not req.year:
             warnings.append("Ingen årgang angivet — alder kunne ikke bestemmes automatisk, ret feltet manuelt.")
         if co2 == 0:
@@ -153,6 +156,7 @@ async def beregn(req: BeregnRequest):
         km = parsed["km"] or 0
         co2 = req.co2 or 0
         age_months = months_since(parsed["year"])
+        target_year = parsed["year"]
         if parsed["year"] is None:
             warnings.append("Kunne ikke finde et årstal i teksten — angiv fx 'BMW 335i 2010, kørt 175000 km'.")
         if co2 == 0:
@@ -233,6 +237,32 @@ async def beregn(req: BeregnRequest):
                 "der er for få resultater tilbage."
             )
 
+    # ÅRSTALS-sikkerhedsnet, tilføjet efter fund i praksis (X3-sagen): mærke/variant-match alene
+    # er ikke nok til at sikre en retvisende sammenligning — DBA gav fund fra så forskellige år som
+    # 2006, 2011 og 2012 for en bil af en helt anden årgang, hvilket gjorde resultatet misvisende.
+    # Sammenligninger SKAL findes med årgang inden for ±1 år af brugerens bil, og op til ±2 år hvis
+    # bilen er over 10 år gammel (ældre biler har færre annoncer at vælge blandt, så en lidt bredere
+    # margin er nødvendig der). Springes kun over hvis vi slet ikke kender bilens egen årgang (fx et
+    # udenlandsk link uden årstal) — der er intet at sammenligne op imod i så fald.
+    def _listing_year(r):
+        m = re.search(r"(\d{4})", r.dato or "")
+        return int(m.group(1)) if m else None
+
+    if target_year:
+        year_window = 2 if (date.today().year - target_year) > 10 else 1
+        year_mismatched = [
+            r for r in usable
+            if _listing_year(r) is None or abs(_listing_year(r) - target_year) > year_window
+        ]
+        if year_mismatched:
+            usable = [r for r in usable if r not in year_mismatched]
+            warnings.append(
+                f"{len(year_mismatched)} fundne biler havde en årgang for langt fra bilens egen "
+                f"({target_year}, ±{year_window} år tilladt) og blev kasseret som sikkerhedsforanstaltning — "
+                "ellers ville sammenligningsgrundlaget blive misvisende. Overvej at søge manuelt hvis der "
+                "er for få resultater tilbage."
+            )
+
     comparisons: list[calc.Comparison] = []
     for r in usable:
         comparisons.append(calc.Comparison(
@@ -249,6 +279,20 @@ async def beregn(req: BeregnRequest):
         except Exception as e:
             bilopslag_extra = []
             warnings.append(f"bilopslag.nu-backup-søgning fejlede ({e}) — se scraper.py, søge-URL'en er ubekræftet.")
+        if bilopslag_extra and target_year:
+            # Samme årstals-sikkerhedsnet som for Bilbasen/DBA ovenfor — bilopslag.nu-fund skal
+            # ikke undtages fra ±1/±2-års-reglen, bare fordi de kun bruges som backup.
+            year_window = 2 if (date.today().year - target_year) > 10 else 1
+            bilopslag_mismatched = [
+                r for r in bilopslag_extra
+                if _listing_year(r) is None or abs(_listing_year(r) - target_year) > year_window
+            ]
+            if bilopslag_mismatched:
+                bilopslag_extra = [r for r in bilopslag_extra if r not in bilopslag_mismatched]
+                warnings.append(
+                    f"{len(bilopslag_mismatched)} bilopslag.nu-fund havde en årgang for langt fra bilens "
+                    f"egen ({target_year}, ±{year_window} år tilladt) og blev kasseret."
+                )
         if bilopslag_extra:
             for r in bilopslag_extra:
                 comparisons.append(calc.Comparison(
