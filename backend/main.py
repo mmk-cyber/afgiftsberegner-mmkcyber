@@ -45,6 +45,9 @@ class BeregnRequest(BaseModel):
     maerke: Optional[str] = None
     model: Optional[str] = None
     year: Optional[int] = None
+    month: Optional[int] = None  # valgfri, 1-12 — gør alders-beregningen præcis i stedet for at
+    # antage midt på året (juni), når brugeren rent faktisk kender registreringsmåneden. Frontend
+    # sender denne, hvis Årgang-feltet blev udfyldt som "MM/ÅÅÅÅ" i stedet for bare "ÅÅÅÅ".
     km: Optional[float] = None
     co2: Optional[float] = None
     fuel_type: str = "konventionel"
@@ -93,14 +96,16 @@ def parse_free_text(text: str) -> dict:
     return {"carName": name_part or text.strip(), "year": year, "km": km_val}
 
 
-def months_since(year: Optional[int]) -> Optional[float]:
+def months_since(year: Optional[int], month: Optional[int] = None) -> Optional[float]:
     if not year:
         return None
-    from datetime import date
     today = date.today()
-    # Antager midt på året (juni), medmindre en mere præcis dato kendes — flag altid denne
-    # antagelse til brugeren, jf. tidligere praksis i denne sags-serie.
-    return (today.year - year) * 12 + (today.month - 6)
+    # Bruger den faktiske registreringsmåned, hvis kendt (fx Årgang-feltet udfyldt som
+    # "06/2020") — giver en præcis alder i stedet for at gætte. Er kun årstallet kendt, antages
+    # fortsat midt på året (juni) som hidtil, og denne antagelse flages til brugeren via en
+    # advarsel (se kaldsstederne nedenfor).
+    m = month if (month and 1 <= month <= 12) else 6
+    return (today.year - year) * 12 + (today.month - m)
 
 
 @app.post("/beregn")
@@ -160,10 +165,12 @@ async def beregn(req: BeregnRequest):
         car_name = f"{req.maerke.strip()} {(req.model or '').strip()}".strip()
         km = req.km or 0
         co2 = req.co2 or 0
-        age_months = months_since(req.year)
+        age_months = months_since(req.year, req.month)
         target_year = req.year
         if not req.year:
             warnings.append("Ingen årgang angivet — alder kunne ikke bestemmes automatisk, ret feltet manuelt.")
+        elif not req.month:
+            warnings.append("Kun årstal angivet uden måned — antager midt på året (juni). Angiv fx '06/2020' i Årgang-feltet for en præcis alder.")
         if co2 == 0:
             warnings.append("Intet CO2-tal angivet — udfyld manuelt, ellers bliver afgiften forkert.")
     else:

@@ -299,7 +299,7 @@
       </div>
       <div class="field">
         <label for="autoYear">Årgang</label>
-        <input type="number" id="autoYear" placeholder="fx 2020">
+        <input type="text" id="autoYear" placeholder="fx 2020 eller 06/2020">
       </div>
     </div>
     <button type="button" class="primary" id="autoFetchBtn" style="white-space:nowrap;">Hent automatisk</button>
@@ -485,6 +485,24 @@ function updateSourceLinkDisplay(){
   }
 }
 
+// Årgang-feltet accepterer nu ENTEN et rent årstal (fx "2020") ELLER måned+år (fx "06/2020" /
+// "6/2020") — tilføjet efter ønske om mere præcis alders-beregning end det hidtidige "antag
+// midt på året (juni)"-gæt, når brugeren rent faktisk kender registreringsmåneden. Tomt/ugyldigt
+// input opfører sig som før (year:null, month:null → alder kan ikke bestemmes automatisk).
+function parseYearMonthField(raw){
+  const v = (raw || '').trim();
+  if(!v) return {year: null, month: null};
+  const mmYyyy = v.match(/^(\d{1,2})\s*\/\s*(\d{4})$/);
+  if(mmYyyy){
+    const month = parseInt(mmYyyy[1], 10);
+    const year = parseInt(mmYyyy[2], 10);
+    return (month >= 1 && month <= 12) ? {year, month} : {year, month: null};
+  }
+  const yyyy = v.match(/^(\d{4})$/);
+  if(yyyy) return {year: parseInt(yyyy[1], 10), month: null};
+  return {year: null, month: null};
+}
+
 async function autoFetch(){
   const statusEl = document.getElementById('autoFetchStatus');
   // Foretræk link, hvis udfyldt (mest præcist — henter direkte fra annoncen). Ellers bruges de
@@ -496,7 +514,8 @@ async function autoFetch(){
   const maerke = document.getElementById('autoMaerke').value.trim();
   const model = document.getElementById('autoModel').value.trim();
   const km = document.getElementById('autoKm').value.trim();
-  const year = document.getElementById('autoYear').value.trim();
+  const yearRaw = document.getElementById('autoYear').value.trim();
+  const { year, month } = parseYearMonthField(yearRaw);
 
   if(!link && !maerke){
     statusEl.textContent = 'Indsæt enten et link til annoncen, eller udfyld mindst bilmærke herunder.';
@@ -512,7 +531,7 @@ async function autoFetch(){
   try{
     const body = link
       ? { input: link }
-      : { input: '', maerke, model, km: km ? parseFloat(km) : null, year: year ? parseInt(year) : null };
+      : { input: '', maerke, model, km: km ? parseFloat(km) : null, year, month };
     body.months = parseFloat(document.getElementById('months').value)||12;
     body.downpct = parseFloat(document.getElementById('downpct').value)||10;
     body.rate = parseFloat(document.getElementById('rate').value)||6;
