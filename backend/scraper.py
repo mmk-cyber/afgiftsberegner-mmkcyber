@@ -344,19 +344,28 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
     Backup-søgning på bilopslag.nu efter mærke/model, brugt KUN når Bilbasen+DBA tilsammen
     giver færre end 4 gode matches (samme regel som "Fast metode" i index.html).
 
-    USIKKERT/UBEKRÆFTET: Jeg har ikke en verificeret søge-URL for bilopslag.nu's "avanceret
-    søgning" fra denne session — kun at enkelt-bil-opslag (nummerplade/stelnummer) virker
-    pålideligt (det er det, `bilopslag_registreringsafgift()` bruger, og det ER testet manuelt
-    flere gange tidligere i denne sags-serie). Denne funktion forsøger et par sandsynlige
-    URL-mønstre og falder tilbage til at give et tomt resultat + en warning, hvis ingen af dem
-    finder gyldige nummerplade-/stelnummer-links. Ret `candidate_urls` herunder, når den
-    rigtige søge-URL er bekræftet (fx ved at åbne "avanceret søgning" på siden manuelt og
-    kigge på adresselinjen).
+    RETTET, VERIFICERET MANUELT (tidligere UBEKRÆFTET og forkert — brugte "/avanceret-sogning",
+    som er en 404, den rigtige sti staves "/avanceret-soegning"): søge-URL'en er bekræftet ved
+    manuelt at bruge "Avanceret søgning" på bilopslag.nu og observere adresselinjen. Query-
+    parametrene er brand_in[]/model_in[]/variant_in[] (ikke fabrikat=/model=, som tidligere
+    gættet). Modellen og eventuel variant er SEPARATE felter i den rigtige søgning (fx
+    model_in[]=X5 og variant_in[]=M50i, ikke model_in[]="X5 M50i" som ét felt) — split derfor
+    `model` på ordgrænser: første ord er model, resten (hvis noget) er variant.
     """
-    candidate_urls = [
-        f"https://bilopslag.nu/avanceret-sogning?fabrikat={quote(maerke.upper())}&model_in[]={quote(model)}",
-        f"https://bilopslag.nu/soegning?fabrikat={quote(maerke.upper())}&model={quote(model)}",
-    ]
+    model_words = model.split()
+    model_only = model_words[0] if model_words else ""
+    variant_only = " ".join(model_words[1:]) if len(model_words) > 1 else ""
+    params = f"brand_in[]={quote(maerke)}"
+    if model_only:
+        params += f"&model_in[]={quote(model_only)}"
+    if variant_only:
+        params += f"&variant_in[]={quote(variant_only)}"
+    candidate_urls = [f"https://bilopslag.nu/avanceret-soegning?{params}"]
+    if variant_only:
+        # Fallback uden variant-filter, i tilfælde af at variant-strengen ikke matcher en
+        # præcis dropdown-værdi (fx forskellig stavning/mellemrum) — bedre for mange resultater
+        # end for ingen.
+        candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?brand_in[]={quote(maerke)}&model_in[]={quote(model_only)}")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -373,13 +382,15 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
                     wait_selector="a[href*='/nummerplade/'], a[href*='/stelnummer/']",
                     timeout=20000,
                 )
-            except Exception:
+            except Exception as e:
+                print(f"[DEBUG bilopslag.nu] url={url} goto failed: {e}")
                 continue
             links = await page.query_selector_all("a[href*='/nummerplade/'], a[href*='/stelnummer/']")
             for l in links:
                 href = await l.get_attribute("href")
                 if href and href not in plate_links:
                     plate_links.append(href)
+            print(f"[DEBUG bilopslag.nu] url={url} plate_links_found={len(plate_links)}")
             if plate_links:
                 break  # første URL-mønster der gav resultater bruges
 

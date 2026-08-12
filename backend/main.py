@@ -63,7 +63,14 @@ def parse_free_text(text: str) -> dict:
     name_part = text
     if year_match:
         name_part = name_part[: year_match.start()]
-    name_part = name_part.strip(" ,.-")
+    # RETTET, fejl fundet i praksis: en bruger skrev "BMW X5 M50i, 1. reg. 05/2022" — årstals-
+    # afskæringen ovenfor fjernede kun "2022" og efterlod "1. reg. 05/" hængende på bilnavnet,
+    # hvilket ødelagde Bilbasen/DBA-søgningen fuldstændig (søgte reelt efter "bmw x5 m50i, 1.
+    # reg. 05/", 0 resultater). Fjern derfor eksplicit "reg."-datoangivelser og efterladte
+    # tal/skråstreger for enden, FØR vi bruger teksten som søgestreng.
+    name_part = re.sub(r"\b\d{1,2}\.?\s*reg(?:istrering)?\.?", "", name_part, flags=re.IGNORECASE)
+    name_part = re.sub(r"[\d./]+\s*$", "", name_part)
+    name_part = name_part.strip(" ,.-/")
     return {"carName": name_part or text.strip(), "year": year, "km": km_val}
 
 
