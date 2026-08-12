@@ -76,6 +76,24 @@ async def _new_page(browser) -> Page:
     return page
 
 
+async def _goto_and_settle(page: Page, url: str, wait_selector: Optional[str] = None,
+                            timeout: int = 15000, settle_ms: int = 800):
+    """
+    Erstatning for wait_until="networkidle", som viste sig at time'e ud i praksis (bekræftet
+    live på Render mod dba.dk — siden er faktisk hurtigt klar, men baggrunds-telemetri/annoncer
+    gør at netværket aldrig bliver "idle" inden for 30s). "domcontentloaded" er langt mere
+    robust, evt. efterfulgt af en eksplicit ventning på et konkret element vi ved skal komme.
+    """
+    await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+    if wait_selector:
+        try:
+            await page.wait_for_selector(wait_selector, timeout=timeout)
+        except Exception:
+            pass
+    else:
+        await page.wait_for_timeout(settle_ms)
+
+
 async def check_listing_body_and_tax_status(page: Page, url: str, expected_body: Optional[str]) -> tuple[bool, str]:
     """
     Besøger en enkelt annonce og afgør om den skal EKSKLUDERES.
@@ -86,7 +104,7 @@ async def check_listing_body_and_tax_status(page: Page, url: str, expected_body:
     kortet (fundet i praksis, se index.html-instruktionerne).
     """
     try:
-        await page.goto(url, wait_until="networkidle", timeout=20000)
+        await _goto_and_settle(page, url, timeout=15000, settle_ms=1200)
     except Exception as e:
         return True, f"kunne ikke hente annonce: {e}"
 
@@ -119,7 +137,7 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await _new_page(browser)
-        await page.goto(url, wait_until="networkidle", timeout=30000)
+        await _goto_and_settle(page, url, wait_selector="a[href*='/brugt/bil/']", timeout=15000)
 
         cards = await page.query_selector_all("a[href*='/brugt/bil/']")
         seen_hrefs = set()
@@ -168,7 +186,7 @@ async def search_dba(query: str, expected_body: Optional[str] = None, max_candid
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await _new_page(browser)
-        await page.goto(url, wait_until="networkidle", timeout=30000)
+        await _goto_and_settle(page, url, wait_selector="a[href*='/mobility/item/']", timeout=15000)
 
         cards = await page.query_selector_all("a[href*='/mobility/item/']")
         seen_hrefs = set()
@@ -225,7 +243,7 @@ async def bilopslag_registreringsafgift(regnr_or_stelnummer: str) -> Optional[di
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await _new_page(browser)
-        await page.goto(url, wait_until="networkidle", timeout=30000)
+        await _goto_and_settle(page, url, timeout=15000, settle_ms=1200)
 
         full_text = await page.inner_text("body")
 
@@ -287,7 +305,11 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
         plate_links: list[str] = []
         for url in candidate_urls:
             try:
-                await page.goto(url, wait_until="networkidle", timeout=20000)
+                await _goto_and_settle(
+                    page, url,
+                    wait_selector="a[href*='/nummerplade/'], a[href*='/stelnummer/']",
+                    timeout=12000,
+                )
             except Exception:
                 continue
             links = await page.query_selector_all("a[href*='/nummerplade/'], a[href*='/stelnummer/']")
@@ -330,7 +352,7 @@ async def fetch_foreign_listing(url: str) -> dict:
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await _new_page(browser)
-        await page.goto(url, wait_until="networkidle", timeout=30000)
+        await _goto_and_settle(page, url, timeout=20000, settle_ms=1200)
         text = await page.inner_text("body")
         title = ""
         try:
