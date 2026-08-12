@@ -104,7 +104,7 @@ async def check_listing_body_and_tax_status(page: Page, url: str, expected_body:
     kortet (fundet i praksis, se index.html-instruktionerne).
     """
     try:
-        await _goto_and_settle(page, url, timeout=15000, settle_ms=1200)
+        await _goto_and_settle(page, url, timeout=25000, settle_ms=1200)
     except Exception as e:
         return True, f"kunne ikke hente annonce: {e}"
 
@@ -135,9 +135,12 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
         f"?includeengroscvr=true&includeleasing=false"
     )
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+        )
         page = await _new_page(browser)
-        await _goto_and_settle(page, url, wait_selector="a[href*='/brugt/bil/']", timeout=15000)
+        await _goto_and_settle(page, url, wait_selector="a[href*='/brugt/bil/']", timeout=25000)
 
         cards = await page.query_selector_all("a[href*='/brugt/bil/']")
         seen_hrefs = set()
@@ -184,9 +187,12 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
 async def search_dba(query: str, expected_body: Optional[str] = None, max_candidates: int = 15) -> list[RawListing]:
     url = f"https://www.dba.dk/mobility/search/car?q={quote(query)}"
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+        )
         page = await _new_page(browser)
-        await _goto_and_settle(page, url, wait_selector="a[href*='/mobility/item/']", timeout=15000)
+        await _goto_and_settle(page, url, wait_selector="a[href*='/mobility/item/']", timeout=25000)
 
         cards = await page.query_selector_all("a[href*='/mobility/item/']")
         seen_hrefs = set()
@@ -241,9 +247,12 @@ async def bilopslag_registreringsafgift(regnr_or_stelnummer: str) -> Optional[di
     """
     url = f"https://bilopslag.nu/nummerplade/{quote(regnr_or_stelnummer)}"
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+        )
         page = await _new_page(browser)
-        await _goto_and_settle(page, url, timeout=15000, settle_ms=1200)
+        await _goto_and_settle(page, url, timeout=25000, settle_ms=1200)
 
         full_text = await page.inner_text("body")
 
@@ -299,7 +308,10 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
     ]
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+        )
         page = await _new_page(browser)
 
         plate_links: list[str] = []
@@ -308,7 +320,7 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
                 await _goto_and_settle(
                     page, url,
                     wait_selector="a[href*='/nummerplade/'], a[href*='/stelnummer/']",
-                    timeout=12000,
+                    timeout=20000,
                 )
             except Exception:
                 continue
@@ -350,7 +362,10 @@ async def fetch_foreign_listing(url: str) -> dict:
     skal kunne rette felterne manuelt bagefter.
     """
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
+        )
         page = await _new_page(browser)
         await _goto_and_settle(page, url, timeout=20000, settle_ms=1200)
         text = await page.inner_text("body")

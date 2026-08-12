@@ -116,9 +116,11 @@ async def beregn(req: BeregnRequest):
             expected_body = hint
             break
 
-    bilbasen_task = scraper.search_bilbasen(maerke, model, expected_body)
-    dba_task = scraper.search_dba(f"{maerke} {model}", expected_body)
-    bilbasen_raw, dba_raw = await asyncio.gather(bilbasen_task, dba_task)
+    # Kører SEKVENTIELT, ikke parallelt (asyncio.gather) — to samtidige headless Chromium-
+    # instanser overbelastede Render's Free-plan (0.1 CPU / 512MB) og forårsagede timeouts/
+    # genstarter i praksis. Tager længere tid samlet, men er markant mere stabilt.
+    bilbasen_raw = await scraper.search_bilbasen(maerke, model, expected_body)
+    dba_raw = await scraper.search_dba(f"{maerke} {model}", expected_body)
 
     usable = [r for r in (bilbasen_raw + dba_raw) if not r.excluded]
     excluded_count = len(bilbasen_raw) + len(dba_raw) - len(usable)
