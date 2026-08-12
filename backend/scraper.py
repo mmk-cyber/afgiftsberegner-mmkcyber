@@ -64,6 +64,22 @@ def _parse_number(text: str) -> float:
     return float(digits) if digits else 0.0
 
 
+async def _card_text(card) -> str:
+    """
+    Bilbasen og DBA bruger begge et mønster hvor selve <a>-tagget er et usynligt overlay-link
+    (fx class="...absolute inset-0...") uden egen tekst — den rigtige kort-tekst (pris, km, titel)
+    sidder i den omsluttende <article>. Bekræftet ved manuel DOM-inspektion af begge sider (denne
+    session): a.innerText er ALTID 0 tegn, mens a.closest('article').innerText har det rigtige
+    indhold. Falder tilbage til parentElement, hvis der ikke findes en <article>-forfader.
+    """
+    try:
+        return await card.evaluate(
+            "el => (el.closest('article') || el.parentElement || el).innerText || ''"
+        )
+    except Exception:
+        return await card.inner_text()
+
+
 async def _new_page(browser) -> Page:
     context = await browser.new_context(
         user_agent=(
@@ -154,7 +170,7 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
             if not href or href in seen_hrefs or not re.search(r"/\d+$", href):
                 continue
             seen_hrefs.add(href)
-            text = await card.inner_text()
+            text = await _card_text(card)
             candidates.append((href, text))
             if len(candidates) >= max_candidates:
                 break
@@ -214,7 +230,7 @@ async def search_dba(query: str, expected_body: Optional[str] = None, max_candid
             if not href or href in seen_hrefs:
                 continue
             seen_hrefs.add(href)
-            text = await card.inner_text()
+            text = await _card_text(card)
             candidates.append((href, text))
             if len(candidates) >= max_candidates:
                 break
