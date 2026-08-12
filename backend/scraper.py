@@ -143,6 +143,10 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
         await _goto_and_settle(page, url, wait_selector="a[href*='/brugt/bil/']", timeout=25000)
 
         cards = await page.query_selector_all("a[href*='/brugt/bil/']")
+        print(f"[DEBUG bilbasen] url={url} title={await page.title()!r} cards_found={len(cards)}", flush=True)
+        if len(cards) == 0:
+            body_snip = (await page.inner_text("body"))[:500]
+            print(f"[DEBUG bilbasen] body_snippet={body_snip!r}", flush=True)
         seen_hrefs = set()
         candidates = []
         for card in cards:
@@ -195,6 +199,10 @@ async def search_dba(query: str, expected_body: Optional[str] = None, max_candid
         await _goto_and_settle(page, url, wait_selector="a[href*='/mobility/item/']", timeout=25000)
 
         cards = await page.query_selector_all("a[href*='/mobility/item/']")
+        print(f"[DEBUG dba] url={url} title={await page.title()!r} cards_found={len(cards)}", flush=True)
+        if len(cards) == 0:
+            body_snip = (await page.inner_text("body"))[:500]
+            print(f"[DEBUG dba] body_snippet={body_snip!r}", flush=True)
         seen_hrefs = set()
         candidates = []
         for card in cards:
