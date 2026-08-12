@@ -169,6 +169,12 @@
   2. Kun hvis Bilbasen+DBA tilsammen ikke giver mindst 3 (helst 5+) gode matches: søg som
      backup på bilopslag.nu efter enkeltbilers "Registreringsafgift"-sektion (officielle
      Motorstyrelsen-vurderinger, viser Handelspris = totalpris inkl. afgift).
+     FEJL SET I PRAKSIS: dette trin blev sprunget over under et manuelt ad-hoc-opslag i chatten
+     (bilen blev fundet med kun 2 Bilbasen-matches, uden at tjekke bilopslag.nu som krævet).
+     Dette gælder ALTID, uanset om sammenligningerne findes via den automatiske robot ELLER
+     manuelt i en chat-samtale (fx fordi en annonce-side blokerer robotten) — spring ALDRIG
+     bilopslag.nu-skridtet over, bare fordi Bilbasen+DBA "giver et resultat". Tjek altid at der
+     er MINDST 3, ellers søg videre der.
 
   KRAV TIL SAMMENLIGNINGERNE:
   - Minimum 3, helst 5 eller flere.
@@ -603,16 +609,18 @@ function deriveMarketValue(comparisons){
   let excludedNote = '';
   let tier;
   if(used.length < 3){
+    // RETTET: minimumskrav er 3 sammenligninger — under det er grundlaget for tyndt til at
+    // regne pålideligt, uanset metode.
     tier = 'thin';
-  } else if(used.length === 3){
-    tier = 'mild';
   } else {
-    tier = 'ok';
-    if(used.length >= 5){
-      const dropped = [used[0], used[used.length-1]];
-      used = used.slice(1, -1);
-      excludedNote = `Billigste (${fmt(dropped[0].pris)}) og dyreste (${fmt(dropped[1].pris)}) er set bort fra, jf. Motorstyrelsens praksis.`;
-    }
+    // RETTET (fejl fundet i praksis): SKAT/Motorstyrelsens praksis om at se bort fra dyreste og
+    // billigste gælder fra minimum 3 sammenligninger, IKKE først fra 5 som en tidligere version
+    // fejlagtigt krævede. Ved præcis 3 betyder det at kun midterprisen bruges (de to yderpunkter
+    // ekskluderes) — det er med vilje, ikke en fejl.
+    tier = used.length >= 5 ? 'ok' : 'mild';
+    const dropped = [used[0], used[used.length-1]];
+    used = used.slice(1, -1);
+    excludedNote = `Billigste (${fmt(dropped[0].pris)}) og dyreste (${fmt(dropped[1].pris)}) er set bort fra, jf. Motorstyrelsens praksis.`;
   }
   const totalIncl = used.reduce((s,c)=>s+c.pris,0) / used.length;
   return { totalIncl, tier, usedCount: used.length, excludedNote };
@@ -759,8 +767,8 @@ function renderConfidenceBanner(market, count){
     return;
   }
   const msgs = {
-    thin: `<div class="banner thin"><strong>${count} sammenligning${count===1?'':'er'} — for tyndt grundlag.</strong> Motorstyrelsens praksis om at se bort fra dyreste/billigste kræver typisk mindst 3-4. Brug med stor forsigtighed.</div>`,
-    mild: `<div class="banner mild"><strong>${count} sammenligninger — brugbart, men stadig et tyndt grundlag.</strong> Flere referencer vil gøre estimatet mere robust.</div>`,
+    thin: `<div class="banner thin"><strong>${count} sammenligning${count===1?'':'er'} — for tyndt grundlag.</strong> Der kræves minimum 3 sammenligninger (Bilbasen+DBA, eller bilopslag.nu som backup hvis der ikke er nok der) for at kunne beregne pålideligt. Find flere sammenligninger før du bruger resultatet.</div>`,
+    mild: `<div class="banner mild"><strong>${count} sammenligninger — brugbart, men stadig et tyndt grundlag.</strong>${market.excludedNote ? ' ' + market.excludedNote : ''} Flere referencer (helst 5+) vil gøre estimatet mere robust.</div>`,
     ok: `<div class="banner ok"><strong>${count} sammenligninger — rimeligt grundlag.</strong>${market.excludedNote ? ' ' + market.excludedNote : ''}</div>`,
   };
   el.innerHTML = msgs[market.tier] || '';
