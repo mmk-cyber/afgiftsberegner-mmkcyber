@@ -133,9 +133,13 @@ async def beregn(req: BeregnRequest):
     # "sammenligninger" — det er værre end at finde for få. Kræv derfor at mærkenavnet rent
     # faktisk indgår i beskrivelsen, før en sammenligning bruges.
     if maerke:
-        mismatched = [r for r in usable if maerke.lower() not in r.beskrivelse.lower()]
+        # Brug kun kernenavnet af mærket (fx "mercedes-benz" -> "mercedes"), da Bilbasen/DBA ofte
+        # forkorter/staver mærket lidt anderledes i selve annonceteksten end det fulde navn — en
+        # for striks fuld-streng-sammenligning ville ellers selv kassere ellers korrekte fund.
+        maerke_core = re.split(r"[-\s]", maerke.lower())[0]
+        mismatched = [r for r in usable if maerke_core not in r.beskrivelse.lower()]
         if mismatched:
-            usable = [r for r in usable if maerke.lower() in r.beskrivelse.lower()]
+            usable = [r for r in usable if maerke_core in r.beskrivelse.lower()]
             warnings.append(
                 f"{len(mismatched)} fundne biler matchede ikke mærket '{maerke}' og blev kasseret "
                 "som sikkerhedsforanstaltning — søgningen kan være gået forkert. Overvej at søge manuelt."
