@@ -107,6 +107,8 @@ def months_since(year: Optional[int]) -> Optional[float]:
 async def beregn(req: BeregnRequest):
     is_link = req.input.strip().startswith("http")
     warnings: list[str] = []
+    fuel_type = req.fuel_type  # kan overskrives nedenfor, hvis vi kan auto-detektere den fra annoncen
+    fuel_display: Optional[str] = None
 
     if is_link:
         foreign = await scraper.fetch_foreign_listing(req.input.strip())
@@ -132,6 +134,20 @@ async def beregn(req: BeregnRequest):
         co2 = req.co2 or foreign["co2"] or 0
         if not foreign["co2"]:
             warnings.append("Kunne ikke finde CO2 på annoncen — brug dansk sammenligningsbils CO2 i stedet, jf. fast praksis.")
+        # DRIVMIDDEL, tilføjet efter fund i praksis: en elbil-annonce fik korrekt fundet CO2 (0),
+        # men "Drivmiddel"-feltet i UI'en stod stadig på standardværdien "Benzin", da intet
+        # automatisk satte det om — hvilket giver en HELT forkert afgift (andet CO2-tillæg,
+        # indfasningsprocent og ekstra bundfradrag for el/plugin-hybrid, se RATES i index.html).
+        # Detekteres samme sted og på samme måde som CO2 (fra annoncens sidetekst).
+        if foreign.get("fuelType"):
+            fuel_type = foreign["fuelType"]
+            fuel_display = foreign["fuelDisplay"]
+        else:
+            warnings.append(
+                "Kunne ikke bestemme drivmiddel (benzin/diesel/plugin-hybrid/el) automatisk fra "
+                "annoncen — tjek 'Drivmiddel' i Køretøj-sektionen er sat korrekt, ellers bliver "
+                "afgiften forkert (især for el/plugin-hybrid)."
+            )
         age_months = None  # kendes typisk ikke præcist fra en udenlandsk annonce alene
         target_year = None  # kendes ikke fra en udenlandsk annonce alene — årstals-sikkerhedsnettet springes derfor over
     elif req.maerke:
@@ -315,12 +331,12 @@ async def beregn(req: BeregnRequest):
 
     result = calc.full_calculation(
         comparisons, co2=co2, age_months=age_months, km_stand=km,
-        fuel_type=req.fuel_type, months=req.months, downpct=req.downpct,
+        fuel_type=fuel_type, months=req.months, downpct=req.downpct,
         rate=req.rate, rest_rente=req.restRente,
     )
 
     return {
-        "car": {"carName": car_name, "co2": co2, "ageMonths": age_months, "kmStand": km},
+        "car": {"carName": car_name, "co2": co2, "ageMonths": age_months, "kmStand": km, "fuelDisplay": fuel_display},
         "comparisons": [
             {
                 "kilde": c.kilde, "beskrivelse": c.beskrivelse, "pris": c.pris, "dato": c.dato,

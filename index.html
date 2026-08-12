@@ -263,7 +263,10 @@
     <p class="sub">Enten: indsæt et link til annoncen (fx mobile.de) — ELLER: udfyld mærke, model/variant, km-stand og årgang herunder. Er linkfeltet udfyldt, bruges det; ellers bruges felterne. Henter og udfylder resten automatisk — tjek altid resultatet, det er et udgangspunkt, ikke et facit.</p>
     <div class="field" style="margin-bottom:14px;">
       <label for="autoLink">Link til annonce (valgfrit)</label>
-      <input type="text" id="autoLink" placeholder="fx https://suchen.mobile.de/...">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" id="autoLink" placeholder="fx https://suchen.mobile.de/..." style="flex:1;" oninput="updateSourceLinkDisplay();">
+        <button type="button" class="linkbtn no-print" title="Åbn link i ny fane" onclick="const u=document.getElementById('autoLink').value.trim(); if(u) window.open(u.startsWith('http')?u:'https://'+u,'_blank');">↗</button>
+      </div>
     </div>
     <div class="grid" style="grid-template-columns: 1.2fr 1.4fr .8fr .8fr; gap:12px; margin-bottom:16px;">
       <div class="field">
@@ -296,8 +299,12 @@
         <input type="text" id="carName" placeholder="fx BMW 330i xDrive Touring M Sport">
       </div>
       <div class="field">
-        <label for="sourceUrl">Kilde-link (udenlandsk annonce)</label>
-        <div style="display:flex;gap:6px;align-items:center;"><input type="url" id="sourceUrl" placeholder="https://..." style="flex:1;"><button type="button" class="linkbtn no-print" title="Åbn link i ny fane" onclick="const u=document.getElementById('sourceUrl').value; if(u) window.open(u,'_blank');">↗</button></div>
+        <label>Kilde-link</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <a id="sourceUrlLink" href="#" target="_blank" rel="noopener" class="footnote" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Intet link — indsæt evt. et i "Automatisk opslag" øverst.</a>
+          <button type="button" class="linkbtn no-print" title="Åbn link i ny fane" onclick="const u=document.getElementById('sourceUrl').value; if(u) window.open(u,'_blank');">↗</button>
+        </div>
+        <input type="hidden" id="sourceUrl">
       </div>
     </div>
     <div class="field" style="margin-bottom:16px;">
@@ -443,6 +450,23 @@
 // no-op med en forklarende besked, resten af værktøjet virker som altid uden den.
 const BACKEND_URL = 'https://afgiftsberegner-mmkcyber.onrender.com';
 
+// Kilde-link, tilføjet efter tilbagemelding: feltet under "Køretøj" var en dublet af linkfeltet
+// i "Automatisk opslag" og krævede manuel udfyldning to steder. Nu er "Automatisk opslag"-feltet
+// den ENESTE plads man indsætter linket — Køretøj-sektionen viser det bare (synkroniseret) med
+// en "åbn i ny fane"-knap, så man stadig kan springe direkte til annoncen derfra.
+function updateSourceLinkDisplay(){
+  const link = document.getElementById('autoLink').value.trim();
+  document.getElementById('sourceUrl').value = link;
+  const a = document.getElementById('sourceUrlLink');
+  if(link){
+    a.href = link.startsWith('http') ? link : 'https://' + link;
+    a.textContent = link;
+  } else {
+    a.removeAttribute('href');
+    a.textContent = 'Intet link — indsæt evt. et i "Automatisk opslag" øverst.';
+  }
+}
+
 async function autoFetch(){
   const statusEl = document.getElementById('autoFetchStatus');
   // Foretræk link, hvis udfyldt (mest præcist — henter direkte fra annoncen). Ellers bruges de
@@ -491,6 +515,13 @@ async function autoFetch(){
     document.getElementById('ageMonths').value = data.car.ageMonths || '';
     document.getElementById('kmStand').value = data.car.kmStand || '';
     document.getElementById('sourceUrl').value = link || '';
+    updateSourceLinkDisplay();
+    // Drivmiddel (benzin/diesel/plugin-hybrid/el) — auto-detekteret samme sted som CO2 (kun
+    // muligt ved link-opslag, ikke ved strukturerede felter). Sættes KUN hvis backend'en faktisk
+    // kunne bestemme det; ellers beholdes brugerens egen manuelle valg af Drivmiddel-knap.
+    if(data.car.fuelDisplay){
+      setFuelByDisplay(data.car.fuelDisplay);
+    }
 
     document.getElementById('compBody').innerHTML = '';
     (data.comparisons || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct));
@@ -750,7 +781,8 @@ function setFuelByDisplay(display){
 
 function applyState(state){
   document.getElementById('carName').value = state.carName || '';
-  document.getElementById('sourceUrl').value = state.sourceUrl || '';
+  document.getElementById('autoLink').value = state.sourceUrl || '';
+  updateSourceLinkDisplay();
   document.getElementById('co2').value = state.co2 || '';
   document.getElementById('ageMonths').value = state.ageMonths || '';
   document.getElementById('kmStand').value = state.kmStand || '';
@@ -912,6 +944,7 @@ document.querySelectorAll('#fuelSeg button').forEach(btn=>{
 document.getElementById('reportDate').textContent = 'Genereret ' + new Date().toLocaleDateString('da-DK', { year:'numeric', month:'long', day:'numeric' });
 
 loadStateFromHash();
+updateSourceLinkDisplay();
 renderAll();
 </script>
 </body>

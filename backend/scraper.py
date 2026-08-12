@@ -430,6 +430,33 @@ _BLOCKED_PAGE_HINTS = (
 )
 
 
+def _detect_fuel_type(text: str) -> Optional[dict]:
+    """
+    Best-effort udtræk af drivmiddel fra en udenlandsk annonces sidetekst (typisk mobile.de's
+    tyske "Kraftstoffart"-felt: Benzin/Diesel/Elektro/Plug-in-Hybrid). Tilføjet efter fund i
+    praksis: værktøjet fandt korrekt CO2 for en elbil-annonce, men lod drivmiddel-feltet i UI'en
+    stå på standardværdien "Benzin" — hvilket giver en helt forkert afgiftsberegning for el/
+    plugin-hybrid (andet CO2-tillæg, indfasningsprocent og ekstra bundfradrag, se RATES i
+    index.html). Returnerer None hvis intet sikkert kunne bestemmes, så frontend beholder
+    brugerens egen manuelle valg i stedet for at gætte forkert.
+    """
+    t = text.lower()
+    # Plug-in-hybrid TJEKKES FØRST, da almindelige "elektro"/"benzin"/"diesel"-ord ofte også
+    # optræder i samme annoncetekst for en hybrid (fx "Benzin/Elektro Plug-in-Hybrid") og ellers
+    # fejlagtigt ville blive matchet som en ren el- eller benzinbil.
+    if re.search(r"plug-?in.?hybrid", t):
+        return {"fuel": "phev", "display": "Plugin-hybrid"}
+    if re.search(r"kraftstoffart[^a-zæøå]{0,20}elektro", t) or re.search(r"\belektro(?:antrieb|auto|fahrzeug)?\b", t):
+        return {"fuel": "ev", "display": "Elbil"}
+    if re.search(r"kraftstoffart[^a-zæøå]{0,20}diesel", t) or re.search(r"\bdiesel\b", t):
+        # Afgiftsmæssigt identisk med benzin (begge "konventionel", jf. UI-note) — kun display-
+        # teksten er forskellig.
+        return {"fuel": "konventionel", "display": "Diesel"}
+    if re.search(r"kraftstoffart[^a-zæøå]{0,20}benzin", t) or "benzin" in t:
+        return {"fuel": "konventionel", "display": "Benzin"}
+    return None
+
+
 async def fetch_foreign_listing(url: str) -> dict:
     """
     Best-effort udtræk af mærke/model/km/år/CO2 fra en udenlandsk annonce (fx mobile.de).
@@ -469,10 +496,13 @@ async def fetch_foreign_listing(url: str) -> dict:
 
         km_match = re.search(r"([\d.]+)\s*km", text)
         co2_match = re.search(r"CO2[^\d]{0,15}([\d]+)\s*g/km", text, re.IGNORECASE)
+        fuel_info = _detect_fuel_type(text)
         return {
             "title": title.strip(),
             "km": _parse_number(km_match.group(1)) if km_match else None,
             "co2": int(co2_match.group(1)) if co2_match else None,
+            "fuelType": fuel_info["fuel"] if fuel_info else None,
+            "fuelDisplay": fuel_info["display"] if fuel_info else None,
             "raw_text_snippet": text[:1000],
             "blocked": False,
         }
