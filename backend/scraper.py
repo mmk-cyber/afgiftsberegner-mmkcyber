@@ -406,6 +406,19 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
     return results
 
 
+
+# Kendte tegn på at siden har blokeret vores hentning (bot-beskyttelse/captcha), i stedet for
+# at vise selve annoncen. Fundet i praksis: et rigtigt Marco-forsøg ramte mobile.de's tyske
+# "Zugriff verweigert" (adgang nægtet)-side, og vores kode brugte dengang blot DEN sides titel
+# som "bilens navn" og søgte videre på det — hvilket gav meningsløse søgeresultater og en
+# forvirrende fejl uden at fortælle hvad der reelt gik galt. Tjek derfor eksplicit for dette.
+_BLOCKED_PAGE_HINTS = (
+    "zugriff verweigert", "access denied", "attention required", "pardon our interruption",
+    "verifying you are human", "checking your browser", "are you a robot", "unusual traffic",
+    "cloudflare", "just a moment...", "blocked", "forbidden", "captcha",
+)
+
+
 async def fetch_foreign_listing(url: str) -> dict:
     """
     Best-effort udtræk af mærke/model/km/år/CO2 fra en udenlandsk annonce (fx mobile.de).
@@ -425,12 +438,30 @@ async def fetch_foreign_listing(url: str) -> dict:
             title = await page.inner_text("h1")
         except Exception:
             pass
+        page_title = ""
+        try:
+            page_title = await page.title()
+        except Exception:
+            pass
+        await browser.close()
+
+        check_text = f"{title} {page_title} {text[:500]}".lower()
+        blocked = any(hint in check_text for hint in _BLOCKED_PAGE_HINTS)
+        if blocked or not title.strip():
+            return {
+                "title": "",
+                "km": None,
+                "co2": None,
+                "raw_text_snippet": text[:1000],
+                "blocked": blocked,
+            }
+
         km_match = re.search(r"([\d.]+)\s*km", text)
         co2_match = re.search(r"CO2[^\d]{0,15}([\d]+)\s*g/km", text, re.IGNORECASE)
-        await browser.close()
         return {
             "title": title.strip(),
             "km": _parse_number(km_match.group(1)) if km_match else None,
             "co2": int(co2_match.group(1)) if co2_match else None,
             "raw_text_snippet": text[:1000],
+            "blocked": False,
         }

@@ -84,6 +84,23 @@ async def beregn(req: BeregnRequest):
 
     if is_link:
         foreign = await scraper.fetch_foreign_listing(req.input.strip())
+        if not foreign["title"]:
+            # Siden blokerede hentningen (bot-beskyttelse/captcha) eller havde ingen læsbar
+            # titel — fundet i praksis (mobile.de's "Zugriff verweigert"). Fejl tydeligt HER i
+            # stedet for at søge videre på en meningsløs "bilnavn"-streng fra en blokeret side.
+            detail_msg = (
+                "Kunne ikke hente annoncen — sitet blokerede automatisk hentning (bot-beskyttelse) "
+                "eller siden kunne ikke læses korrekt."
+                if foreign.get("blocked")
+                else "Kunne ikke finde en titel/bilnavn på siden — er linket korrekt, og er annoncen stadig aktiv?"
+            )
+            raise HTTPException(status_code=422, detail={
+                "message": detail_msg,
+                "warnings": [
+                    "Prøv i stedet at indtaste bilens data manuelt (mærke, model, år, km, CO2), "
+                    "eller find et link til samme bil på en anden annonce-side.",
+                ],
+            })
         car_name = foreign["title"] or req.input
         km = foreign["km"] or 0
         co2 = req.co2 or foreign["co2"] or 0
