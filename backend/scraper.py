@@ -159,6 +159,10 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
             if len(candidates) >= max_candidates:
                 break
 
+        print(f"[DEBUG bilbasen] candidates_after_filter={len(candidates)}", flush=True)
+        for i, (h, t) in enumerate(candidates[:3]):
+            print(f"[DEBUG bilbasen] candidate{i} href={h!r} text_len={len(t)} text_repr={t[:200]!r}", flush=True)
+
         results = []
         for href, text in candidates:
             full_url = href if href.startswith("http") else f"https://www.bilbasen.dk{href}"
@@ -214,6 +218,10 @@ async def search_dba(query: str, expected_body: Optional[str] = None, max_candid
             candidates.append((href, text))
             if len(candidates) >= max_candidates:
                 break
+
+        print(f"[DEBUG dba] candidates_after_filter={len(candidates)}", flush=True)
+        for i, (h, t) in enumerate(candidates[:3]):
+            print(f"[DEBUG dba] candidate{i} href={h!r} text_len={len(t)} text_repr={t[:200]!r}", flush=True)
 
         results = []
         for href, text in candidates:
