@@ -105,11 +105,17 @@ async def beregn(req: BeregnRequest):
         age_months = 0
         warnings.append("Alder (måneder) kunne ikke bestemmes automatisk — ret feltet manuelt.")
 
-    # Meget grov mærke/model-splitting til søgning — brugeren bør kunne rette dette i UI'et,
-    # før scraperen faktisk kaldes, i en rigtig version. Her et simpelt best-effort-gæt.
+    # Mærke/model-splitting til søgning. VIGTIGT, rettet efter fejl i praksis: en tidligere
+    # version brugte KUN andet ord som "model" (fx kun "CLA" af "Mercedes-Benz CLA 45 AMG"),
+    # hvilket mistede performance-variant-navnet og fik søgningen til at finde helt forkerte
+    # (og langt billigere/dyrere) varianter af den rigtige model — fx nye el-drevne CLA250/350
+    # i stedet for den benzindrevne CLA 45 AMG. Brug derfor ALLE ord efter mærket som model/
+    # variant i søgningen (både Bilbasen og DBA søger nu på fritekst, ikke faste URL-stier, så
+    # en længere, mere præcis søgestreng er kun en fordel — giver den for få/ingen trænger,
+    # falder værktøjet automatisk tilbage til bilopslag.nu, jf. Fast metode).
     parts = car_name.split()
     maerke = parts[0] if parts else ""
-    model = parts[1] if len(parts) > 1 else ""
+    model = " ".join(parts[1:8])
     expected_body = None
     for hint in ("cabriolet", "coupe", "coupé", "touring", "stationcar", "sedan"):
         if hint in car_name.lower():
