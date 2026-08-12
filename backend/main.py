@@ -151,6 +151,31 @@ async def beregn(req: BeregnRequest):
                 "som sikkerhedsforanstaltning — søgningen kan være gået forkert. Overvej at søge manuelt."
             )
 
+    # VARIANT-sikkerhedsnet, tilføjet efter fund i praksis: mærke-matchet alene er ikke nok —
+    # en søgning på "Mercedes-Benz CLA 45 AMG" gav Bilbasen-resultater der ganske rigtigt var
+    # Mercedes CLA'er, men helt forkerte varianter (CLA200, CLA220d, nye el-drevne CLA250+),
+    # ikke performance-udgaven "45 AMG". Hvis modellen indeholder et rent talord (typisk en
+    # effekt-/variant-betegnelse som "45"), så kræv at annoncen faktisk nævner det tal — ellers
+    # kasseres den. Bruger KUN rene tal (ikke fx "335i", som allerede er præcist nok i sig selv
+    # og ikke skal risikere at blive kasseret pga. formateringsforskelle som "335 i").
+    numeric_variant_tokens = [t for t in model.split() if t.isdigit()]
+    if numeric_variant_tokens:
+        variant_mismatched = [
+            r for r in usable
+            if not all(t in r.beskrivelse.lower() for t in numeric_variant_tokens)
+        ]
+        if variant_mismatched:
+            usable = [
+                r for r in usable
+                if all(t in r.beskrivelse.lower() for t in numeric_variant_tokens)
+            ]
+            warnings.append(
+                f"{len(variant_mismatched)} fundne biler matchede mærket, men ikke den specifikke "
+                f"variant ('{' '.join(numeric_variant_tokens)}') og blev kasseret — det var en anden "
+                "udgave af modellen (fx en billigere/dyrere variant). Overvej at søge manuelt hvis "
+                "der er for få resultater tilbage."
+            )
+
     comparisons: list[calc.Comparison] = []
     for r in usable:
         comparisons.append(calc.Comparison(
