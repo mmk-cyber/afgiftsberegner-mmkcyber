@@ -341,9 +341,15 @@ async def beregn(req: BeregnRequest):
         # søgning" kan filtrere på registreringsdato server-side (se scraper.py), så brug det i
         # stedet for at håbe og kassere bagefter.
         year_window = 2 if target_year and (date.today().year - target_year) > 10 else 1
+        # max_candidates hævet fra 10 til 30, fundet i praksis (BMW M3-sagen): selv med korrekt
+        # årgangsfilter på selve søgningen (se ovenfor) har kun et MINDRETAL af biler på
+        # bilopslag.nu en udfyldt "Registreringsafgift"-sektion — 78 M3'er i årgangsvinduet gav 0
+        # brugbare, fordi ingen af de første 10 tjekkede havde data udfyldt. Nu hvor puljen allerede
+        # er årgangsfiltreret (ikke længere gætteri), er det værd at tjekke flere for bedre odds —
+        # på bekostning af længere svartid (hver ekstra kandidat er et helt sidebesøg).
         try:
             bilopslag_extra = await scraper.search_bilopslag_nu(
-                maerke, model, target_year=target_year, year_window=year_window,
+                maerke, model, max_candidates=30, target_year=target_year, year_window=year_window,
             )
         except Exception as e:
             bilopslag_extra = []
