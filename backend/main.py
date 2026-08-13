@@ -341,15 +341,16 @@ async def beregn(req: BeregnRequest):
         # søgning" kan filtrere på registreringsdato server-side (se scraper.py), så brug det i
         # stedet for at håbe og kassere bagefter.
         year_window = 2 if target_year and (date.today().year - target_year) > 10 else 1
-        # max_candidates hævet fra 10 til 30, fundet i praksis (BMW M3-sagen): selv med korrekt
-        # årgangsfilter på selve søgningen (se ovenfor) har kun et MINDRETAL af biler på
-        # bilopslag.nu en udfyldt "Registreringsafgift"-sektion — 78 M3'er i årgangsvinduet gav 0
-        # brugbare, fordi ingen af de første 10 tjekkede havde data udfyldt. Nu hvor puljen allerede
-        # er årgangsfiltreret (ikke længere gætteri), er det værd at tjekke flere for bedre odds —
-        # på bekostning af længere svartid (hver ekstra kandidat er et helt sidebesøg).
+        # RETTET IGEN, fundet i praksis (samme BMW M3-sag): max_candidates=30 blev afprøvet for
+        # bedre chance for at finde udfyldt "Registreringsafgift"-data, men gjorde søgningen så
+        # langsom at BRUGERENS EGEN BROWSER opgav ventetiden ("Failed to fetch") — reelt værre end
+        # problemet det skulle løse, fordi et for langsomt svar aldrig når frem, uanset hvor godt
+        # resultatet ville have været. Sat tilbage til scraper.py's default (10). Nu hvor puljen er
+        # årgangsfiltreret (se ovenfor), er 10 i det rigtige vindue stadig langt bedre end 10
+        # tilfældige var før — svartid vejer tungere end at presse flere kandidater igennem.
         try:
             bilopslag_extra = await scraper.search_bilopslag_nu(
-                maerke, model, max_candidates=30, target_year=target_year, year_window=year_window,
+                maerke, model, target_year=target_year, year_window=year_window,
             )
         except Exception as e:
             bilopslag_extra = []
