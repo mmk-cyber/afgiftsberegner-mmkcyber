@@ -339,7 +339,8 @@ async def bilopslag_registreringsafgift(regnr_or_stelnummer: str) -> Optional[di
         }
 
 
-async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10) -> list[RawListing]:
+async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10,
+                               target_year: Optional[int] = None, year_window: int = 1) -> list[RawListing]:
     """
     Backup-søgning på bilopslag.nu efter mærke/model, brugt KUN når Bilbasen+DBA tilsammen
     giver færre end 4 gode matches (samme regel som "Fast metode" i index.html).
@@ -351,6 +352,19 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
     gættet). Modellen og eventuel variant er SEPARATE felter i den rigtige søgning (fx
     model_in[]=X5 og variant_in[]=M50i, ikke model_in[]="X5 M50i" som ét felt) — split derfor
     `model` på ordgrænser: første ord er model, resten (hvis noget) er variant.
+
+    ÅRSTALSFILTER PÅ SELVE SØGNINGEN (target_year/year_window), tilføjet efter fund i praksis
+    (BMW M3-sagen): en model der har eksisteret i mange årgange (fx M3, 1986-nu) kan sagtens give
+    100+ bilopslag.nu-fund, men vi tjekkede hidtil blot de FØRSTE `max_candidates` (ofte nyeste/
+    ældste efter sitets egen sortering) — hvis ingen af dem tilfældigvis lå i brugerens årgangs-
+    vindue, endte søgningen med 0 brugbare sammenligninger, selvom relevante biler fandtes længere
+    nede i listen. Bilopslag.nu's "Avanceret søgning" har egne dato-felter til dette; bekræftet
+    manuelt at de rigtige URL-parametre er first_registration_date_gteq/_lteq (format ÅÅÅÅ-MM-DD),
+    IKKE noget der matchede de synlige feltnavne ("Første registreringsdato fra/til") — fundet ved
+    at udfylde felterne i browseren og aflæse den resulterende adresselinje. Filtrerer serveren
+    selv efter årgang FØR vi henter noget, i stedet for at håbe de første N tilfældigt rammer
+    rigtigt og kassere resten bagefter (som det gamle års-sikkerhedsnet i main.py stadig gør, som
+    en ekstra bagstopper, hvis dette filter af en eller anden grund ikke rammer helt præcist).
     """
     # KRITISK FIX, fundet i praksis (BMW M3-sagen): bilopslag.nu's brand_in[]-filter matcher kun
     # PRÆCIS versaliseret mærkenavn (fx "BMW"), som er sådan Motorregistret-data er lagret. Sendes
@@ -380,6 +394,15 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
                 out.append(v)
         return out
 
+    date_params = ""
+    if target_year:
+        # ÅÅÅÅ-01-01 til (ÅÅÅÅ+1)-01-01 dækker hele kalenderårene i vinduet uden at skulle regne
+        # på måneder — target_year kendes typisk kun som årstal, ikke præcis dato.
+        date_params = (
+            f"&first_registration_date_gteq={target_year - year_window}-01-01"
+            f"&first_registration_date_lteq={target_year + year_window}-12-31"
+        )
+
     candidate_urls = []
     for model_case in (_casings(model_only) if model_only else [""]):
         for variant_case in (_casings(variant_only) if variant_only else [""]):
@@ -388,12 +411,12 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
                 params += f"&model_in[]={quote(model_case)}"
             if variant_case:
                 params += f"&variant_in[]={quote(variant_case)}"
-            candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?{params}")
+            candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?{params}{date_params}")
     if variant_only:
         # Fallback uden variant-filter, i tilfælde af at variant-strengen slet ikke matcher en
         # dropdown-værdi (fx forskellig stavning/mellemrum) — bedre for mange resultater end ingen.
         for model_case in _casings(model_only):
-            candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?brand_in[]={quote(maerke_upper)}&model_in[]={quote(model_case)}")
+            candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?brand_in[]={quote(maerke_upper)}&model_in[]={quote(model_case)}{date_params}")
     # BEVIDST ingen sidste "kun mærke"-fallback uden modelfilter: ville give hundredtusindvis af
     # urelaterede biler (alle modeller af mærket), og main.py's mærke/variant-sikkerhedsnet
     # tjekker IKKE bilopslag.nu-backup'ets fund — hellere 0 resultater end forkerte sammenligninger.

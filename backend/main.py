@@ -332,17 +332,25 @@ async def beregn(req: BeregnRequest):
     # Backup, jf. "Fast metode": kun hvis Bilbasen+DBA tilsammen giver færre end 4 gode matches,
     # søg supplerende på bilopslag.nu (mærke/model). Disse rækker kommer med Værdi u. afgift
     # direkte fra kilden, så de også styrker 3-metode-restværdimodellen (peer/regression), ikke
-    # kun gennemsnitsprisen. Se scraper.py: søge-URL'en her er UBEKRÆFTET og kan kræve rettelse.
+    # kun gennemsnitsprisen.
     if len(comparisons) < 4:
+        # ÅRSTAL SENDES NU MED TIL SELVE SØGNINGEN, fundet i praksis (BMW M3-sagen): en model som
+        # M3 har eksisteret siden 1986 og kan give 100+ fund — kun at tjekke de første 10 (uden
+        # årstalsfilter på selve søgningen) risikerede at ramme forkerte årgange og give 0 brugbare
+        # resultater, selvom relevante biler fandtes i søgningen. bilopslag.nu's egen "Avanceret
+        # søgning" kan filtrere på registreringsdato server-side (se scraper.py), så brug det i
+        # stedet for at håbe og kassere bagefter.
+        year_window = 2 if target_year and (date.today().year - target_year) > 10 else 1
         try:
-            bilopslag_extra = await scraper.search_bilopslag_nu(maerke, model)
+            bilopslag_extra = await scraper.search_bilopslag_nu(
+                maerke, model, target_year=target_year, year_window=year_window,
+            )
         except Exception as e:
             bilopslag_extra = []
-            warnings.append(f"bilopslag.nu-backup-søgning fejlede ({e}) — se scraper.py, søge-URL'en er ubekræftet.")
+            warnings.append(f"bilopslag.nu-backup-søgning fejlede ({e}).")
         if bilopslag_extra and target_year:
-            # Samme årstals-sikkerhedsnet som for Bilbasen/DBA ovenfor — bilopslag.nu-fund skal
-            # ikke undtages fra ±1/±2-års-reglen, bare fordi de kun bruges som backup.
-            year_window = 2 if (date.today().year - target_year) > 10 else 1
+            # Bagstopper, hvis søgningens eget datofilter (scraper.py) af en eller anden grund ikke
+            # rammer helt præcist — bilopslag.nu-fund skal stadig overholde ±1/±2-års-reglen.
             bilopslag_mismatched = [
                 r for r in bilopslag_extra
                 if _listing_year(r) is None or abs(_listing_year(r) - target_year) > year_window
