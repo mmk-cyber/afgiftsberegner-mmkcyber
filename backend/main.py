@@ -240,9 +240,16 @@ async def beregn(req: BeregnRequest):
     # Mercedes CLA'er, men helt forkerte varianter (CLA200, CLA220d, nye el-drevne CLA250+),
     # ikke performance-udgaven "45 AMG". Hvis modellen indeholder et rent talord (typisk en
     # effekt-/variant-betegnelse som "45"), så kræv at annoncen faktisk nævner det tal — ellers
-    # kasseres den. Bruger KUN rene tal (ikke fx "335i", som allerede er præcist nok i sig selv
-    # og ikke skal risikere at blive kasseret pga. formateringsforskelle som "335 i").
-    numeric_variant_tokens = [t for t in model.split() if t.isdigit()]
+    # kasseres den.
+    #
+    # UDVIDET, fundet i praksis (BMW M3-sagen): kun at kræve RENE talord var ikke nok — en søgning
+    # på "bmw m3" gav Bilbasen-"kandidater" der reelt var en X3, en 335i og en X5 (alle diesel/
+    # benzin-modeller uden nogen som helst forbindelse til M3'eren), fordi Bilbasens egen fritekst-
+    # søgning tydeligvis ranker løst, og "m3" (bogstav+tal) blev IKKE fanget af det gamle isdigit()-
+    # filter, som bevidst kun så på rene tal. Krav nu ALLE modelord — også bogstav+tal-koder som
+    # "M3", "X3", "530e", "545e" — ikke kun rene tal. Ingen kendt ulempe ved dette er fundet i
+    # praksis (tidligere bekymring om formateringsforskelle som "335i" vs. "335 i" er ikke set).
+    numeric_variant_tokens = [t for t in model.split() if t]
     if numeric_variant_tokens:
         variant_mismatched = [
             r for r in usable
