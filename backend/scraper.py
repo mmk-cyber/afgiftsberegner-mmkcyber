@@ -352,20 +352,51 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10)
     model_in[]=X5 og variant_in[]=M50i, ikke model_in[]="X5 M50i" som ét felt) — split derfor
     `model` på ordgrænser: første ord er model, resten (hvis noget) er variant.
     """
+    # KRITISK FIX, fundet i praksis (BMW M3-sagen): bilopslag.nu's brand_in[]-filter matcher kun
+    # PRÆCIS versaliseret mærkenavn (fx "BMW"), som er sådan Motorregistret-data er lagret. Sendes
+    # mærket som brugeren selv tastede det (typisk småt, fx "bmw" fra Bilmærke-feltet), matcher
+    # filteret intet som helst — Model-dropdownen viser "No options", og søgningen giver stille og
+    # roligt 0 resultater, selvom mærket i virkeligheden findes med masser af biler. Bekræftet
+    # manuelt: brand_in[]=bmw -> 0 resultater / ingen modelvalg; brand_in[]=BMW -> 282.716
+    # resultater og "M3" som gyldig model. Versalisér derfor ALTID mærket her, uanset hvad
+    # brugeren tastede — påvirker kun dette ene kald, ikke Bilbasen/DBA (som er case-insensitive).
+    maerke_upper = maerke.strip().upper()
     model_words = model.split()
     model_only = model_words[0] if model_words else ""
     variant_only = " ".join(model_words[1:]) if len(model_words) > 1 else ""
-    params = f"brand_in[]={quote(maerke)}"
-    if model_only:
-        params += f"&model_in[]={quote(model_only)}"
+
+    # SAMME FIX, udvidet til model/variant: bekræftet manuelt at model_in[]/variant_in[] også kun
+    # matcher PRÆCIS versaliseret tekst (fx "M3", "M340d xDrive", "M3 Competition M Xdrive") —
+    # model_in[]=m3 (småt, som brugeren typisk taster) blev ligeså stille droppet af siden som
+    # brand_in[]=bmw gjorde. Modellernes rigtige forbogstavs-mønster er ikke fuldt ensartet (kan
+    # ikke bare .upper()'es som mærket), men .title() rammer det korrekt i alle observerede
+    # eksempler ("m3"->"M3", "m340d xdrive"->"M340d Xdrive"), så prøv den kasus FØRST, med original
+    # og fuld upper-case som fallback, hvis title() alligevel ikke rammer den præcise stavning.
+    def _casings(s: str) -> list[str]:
+        seen, out = set(), []
+        for v in (s.title(), s, s.upper()):
+            if v and v not in seen:
+                seen.add(v)
+                out.append(v)
+        return out
+
+    candidate_urls = []
+    for model_case in (_casings(model_only) if model_only else [""]):
+        for variant_case in (_casings(variant_only) if variant_only else [""]):
+            params = f"brand_in[]={quote(maerke_upper)}"
+            if model_case:
+                params += f"&model_in[]={quote(model_case)}"
+            if variant_case:
+                params += f"&variant_in[]={quote(variant_case)}"
+            candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?{params}")
     if variant_only:
-        params += f"&variant_in[]={quote(variant_only)}"
-    candidate_urls = [f"https://bilopslag.nu/avanceret-soegning?{params}"]
-    if variant_only:
-        # Fallback uden variant-filter, i tilfælde af at variant-strengen ikke matcher en
-        # præcis dropdown-værdi (fx forskellig stavning/mellemrum) — bedre for mange resultater
-        # end for ingen.
-        candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?brand_in[]={quote(maerke)}&model_in[]={quote(model_only)}")
+        # Fallback uden variant-filter, i tilfælde af at variant-strengen slet ikke matcher en
+        # dropdown-værdi (fx forskellig stavning/mellemrum) — bedre for mange resultater end ingen.
+        for model_case in _casings(model_only):
+            candidate_urls.append(f"https://bilopslag.nu/avanceret-soegning?brand_in[]={quote(maerke_upper)}&model_in[]={quote(model_case)}")
+    # BEVIDST ingen sidste "kun mærke"-fallback uden modelfilter: ville give hundredtusindvis af
+    # urelaterede biler (alle modeller af mærket), og main.py's mærke/variant-sikkerhedsnet
+    # tjekker IKKE bilopslag.nu-backup'ets fund — hellere 0 resultater end forkerte sammenligninger.
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
