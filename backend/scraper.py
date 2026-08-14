@@ -153,6 +153,21 @@ async def check_listing_body_and_tax_status(page: Page, url: str, expected_body:
     return False, ""
 
 
+# PARALLELISERINGS-GRÆNSE, tilføjet efter fund i praksis (aften/nat med Marco, august 2026,
+# efter gentagne 15-25 min ventetider): kandidat-tjek (check_listing_body_and_tax_status og
+# bilopslag_registreringsafgift) bestod hidtil af én sekventiel Playwright-sidevisning ad gangen —
+# op til 15 (Bilbasen) + 10 (bilopslag.nu) = 25 fulde sidebesøg efter hinanden, hver 15-25s, som
+# lagde grunden for de meget lange samlede søgetider. Ventetiden er dog primært NETVÆRKS-I/O
+# (siden skal hentes og renderes af den fjerne server), ikke ren CPU — så flere sider kan hentes
+# SAMTIDIG i samme browser-instans uden at kræve mere CPU-kraft, blot mere hukommelse/netværks-
+# båndbredde, som ikke er den knappe ressource på Render's gratis plan (0.1 CPU er). Sat til 4
+# samtidige sider som en afvejning: højere ville formentlig give diminishing returns og risikere
+# CPU-sult (rendering af 4+ sider samtidig PÅ 0.1 CPU begynder selv at konkurrere), for lavt giver
+# for lidt gevinst. Ingen hård videnskab bag tallet 4 — justér hvis det viser sig for
+# aggressivt/forsigtigt i praksis.
+CANDIDATE_CHECK_CONCURRENCY = 4
+
+
 async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] = None,
                            max_candidates: int = 15) -> list[RawListing]:
     # KRITISK FIX, fundet i praksis: den tidligere URL brugte mærke/model direkte som sti-segmenter
@@ -198,20 +213,32 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
         for i, (h, t) in enumerate(candidates[:3]):
             print(f"[DEBUG bilbasen] candidate{i} href={h!r} text_len={len(t)} text_repr={t[:200]!r}", flush=True)
 
-        results = []
-        for href, text in candidates:
+        # PARALLELISERET kandidat-tjek, se CANDIDATE_CHECK_CONCURRENCY-kommentaren ovenfor. Hver
+        # samtidig opgave bruger sin EGEN side (Playwright-sider/tabs er billige og isolerede
+        # inden for samme browser-instans — modsat en helt ny browser-proces pr. kandidat, hvilket
+        # ville være unødigt dyrt), styret af et semafor så vi højst har
+        # CANDIDATE_CHECK_CONCURRENCY sider åbne på samme tid.
+        sem = asyncio.Semaphore(CANDIDATE_CHECK_CONCURRENCY)
+
+        async def _check_one(href: str, text: str) -> Optional[RawListing]:
             full_url = href if href.startswith("http") else f"https://www.bilbasen.dk{href}"
             price_match = re.search(r"([\d.]+)\s*kr", text)
             date_match = re.search(r"(\d{1,2}/\d{4})", text)
             km_match = re.search(r"([\d.]+)\s*km", text)
             if not price_match:
-                continue
+                return None
             pris = _parse_number(price_match.group(1))
             if pris <= 0:
-                continue
+                return None
 
-            excluded, reason = await check_listing_body_and_tax_status(page, full_url, expected_body)
-            results.append(RawListing(
+            async with sem:
+                candidate_page = await _new_page(browser)
+                try:
+                    excluded, reason = await check_listing_body_and_tax_status(candidate_page, full_url, expected_body)
+                finally:
+                    await candidate_page.close()
+
+            return RawListing(
                 kilde="Bilbasen",
                 beskrivelse=text.replace("\n", " ")[:120],
                 pris=pris,
@@ -221,7 +248,10 @@ async def search_bilbasen(maerke: str, model: str, expected_body: Optional[str] 
                 body_type_text=text,
                 excluded=excluded,
                 exclude_reason=reason,
-            ))
+            )
+
+        checked = await asyncio.gather(*(_check_one(href, text) for href, text in candidates))
+        results = [r for r in checked if r is not None]
 
         await browser.close()
         return results
@@ -287,7 +317,7 @@ async def search_dba(query: str, expected_body: Optional[str] = None, max_candid
         return results
 
 
-async def bilopslag_registreringsafgift(regnr_or_stelnummer: str) -> Optional[dict]:
+async def bilopslag_registreringsafgift(page: Page, regnr_or_stelnummer: str) -> Optional[dict]:
     """
     Slår ét nummerplade/stelnummer op på bilopslag.nu og henter SENESTE række i
     Registreringsafgift-sektionen (Handelspris, Værdi u. afgift, Registreringsafgift,
@@ -295,48 +325,51 @@ async def bilopslag_registreringsafgift(regnr_or_stelnummer: str) -> Optional[di
 
     Returnerer None hvis bilen ikke har en udfyldt Registreringsafgift-sektion
     (kun et mindretal af biler har det, jf. instruktionerne — helt normalt, ikke en fejl).
+
+    ÆNDRET, fundet i praksis (parallelisering, august 2026): tog tidligere en Playwright-SIDE
+    som parameter i stedet for selv at starte en helt ny browser-PROCES pr. opslag — at starte
+    en frisk headless Chromium-proces for hver enkelt nummerplade (op til 10 pr. søgning) var
+    unødigt dyrt og gjorde det umuligt at parallelisere billigt (flere browser-processer samtidig
+    på 0.1 CPU ville være langt værre end flere sider i ÉN browser). Kaldestedet
+    (search_bilopslag_nu) ejer nu browseren/siden og lukker den, ikke denne funktion.
     """
     url = f"https://bilopslag.nu/nummerplade/{quote(regnr_or_stelnummer)}"
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"],
-        )
-        page = await _new_page(browser)
+    try:
         await _goto_and_settle(page, url, timeout=25000, settle_ms=1200)
+    except Exception as e:
+        print(f"[DEBUG bilopslag.nu] plate={regnr_or_stelnummer!r} goto failed: {e}", flush=True)
+        return None
 
-        full_text = await page.inner_text("body")
+    full_text = await page.inner_text("body")
 
-        km_match = re.search(r"KM-STAND\s*\n?([\d.]+)\s*km", full_text, re.IGNORECASE)
-        km = _parse_number(km_match.group(1)) if km_match else 0
+    km_match = re.search(r"KM-STAND\s*\n?([\d.]+)\s*km", full_text, re.IGNORECASE)
+    km = _parse_number(km_match.group(1)) if km_match else 0
 
-        idx = full_text.find("Registreringsafgift", full_text.find("Registreringsafgift") + 5)
-        if idx == -1:
-            await browser.close()
-            return None
+    idx = full_text.find("Registreringsafgift", full_text.find("Registreringsafgift") + 5)
+    if idx == -1:
+        return None
 
-        section = full_text[idx: idx + 800]
-        row_match = re.search(
-            r"(\d{2}-\d{2}-\d{4}).*?\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d,]+)\s*%",
-            section, re.DOTALL,
-        )
-        # NB: dette regex-mønster er et BEDSTE BUD baseret på tekst-layoutet observeret manuelt
-        # (dato / vurderingstype / handelspris / nypris / værdi u. afgift / registreringsafgift /
-        # opkrævet / andel%) — skal verificeres når scraperen faktisk kan køre mod den rigtige side.
-        await browser.close()
-        if not row_match:
-            return {"raw_section": section, "km": km, "parsed": False}
+    section = full_text[idx: idx + 800]
+    row_match = re.search(
+        r"(\d{2}-\d{2}-\d{4}).*?\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d.]+)\s*kr\.\s*\n([\d,]+)\s*%",
+        section, re.DOTALL,
+    )
+    # NB: dette regex-mønster er et BEDSTE BUD baseret på tekst-layoutet observeret manuelt
+    # (dato / vurderingstype / handelspris / nypris / værdi u. afgift / registreringsafgift /
+    # opkrævet / andel%) — skal verificeres når scraperen faktisk kan køre mod den rigtige side.
+    if not row_match:
+        return {"raw_section": section, "km": km, "parsed": False}
 
-        return {
-            "dato": row_match.group(1),
-            "handelspris": _parse_number(row_match.group(2)),
-            "vaerdi_u_afgift": _parse_number(row_match.group(4)),
-            "regafgift": _parse_number(row_match.group(5)),
-            "opkraevet": _parse_number(row_match.group(6)),
-            "andel_pct": float(row_match.group(7).replace(",", ".")),
-            "km": km,
-            "parsed": True,
-        }
+    return {
+        "dato": row_match.group(1),
+        "handelspris": _parse_number(row_match.group(2)),
+        "vaerdi_u_afgift": _parse_number(row_match.group(4)),
+        "regafgift": _parse_number(row_match.group(5)),
+        "opkraevet": _parse_number(row_match.group(6)),
+        "andel_pct": float(row_match.group(7).replace(",", ".")),
+        "km": km,
+        "parsed": True,
+    }
 
 
 async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10,
@@ -448,26 +481,39 @@ async def search_bilopslag_nu(maerke: str, model: str, max_candidates: int = 10,
             if plate_links:
                 break  # første URL-mønster der gav resultater bruges
 
+        # GENBRUGER SAMME BROWSER til selve nummerplade-opslagene nedenfor (se
+        # bilopslag_registreringsafgift-kommentaren) — parallelliseret på samme måde som
+        # search_bilbasen, med samme CANDIDATE_CHECK_CONCURRENCY-grænse.
+        sem = asyncio.Semaphore(CANDIDATE_CHECK_CONCURRENCY)
+
+        async def _lookup_one(href: str) -> Optional[RawListing]:
+            plate = href.rstrip("/").split("/")[-1]
+            async with sem:
+                lookup_page = await _new_page(browser)
+                try:
+                    data = await bilopslag_registreringsafgift(lookup_page, plate)
+                finally:
+                    await lookup_page.close()
+            if not data or not data.get("parsed"):
+                return None
+            return RawListing(
+                kilde="bilopslag.nu",
+                beskrivelse=f"{maerke} {model} ({plate})",
+                pris=data["handelspris"],
+                dato=data["dato"],
+                km=data["km"],
+                link=f"https://bilopslag.nu/nummerplade/{plate}",
+                vaerdi_u_afgift=data["vaerdi_u_afgift"],
+                regafgift=data["regafgift"],
+                opkraevet=data["opkraevet"],
+                andel_pct=data["andel_pct"],
+            )
+
+        looked_up = await asyncio.gather(*(_lookup_one(href) for href in plate_links[:max_candidates]))
+        results: list[RawListing] = [r for r in looked_up if r is not None]
+
         await browser.close()
 
-    results: list[RawListing] = []
-    for href in plate_links[:max_candidates]:
-        plate = href.rstrip("/").split("/")[-1]
-        data = await bilopslag_registreringsafgift(plate)
-        if not data or not data.get("parsed"):
-            continue
-        results.append(RawListing(
-            kilde="bilopslag.nu",
-            beskrivelse=f"{maerke} {model} ({plate})",
-            pris=data["handelspris"],
-            dato=data["dato"],
-            km=data["km"],
-            link=f"https://bilopslag.nu/nummerplade/{plate}",
-            vaerdi_u_afgift=data["vaerdi_u_afgift"],
-            regafgift=data["regafgift"],
-            opkraevet=data["opkraevet"],
-            andel_pct=data["andel_pct"],
-        ))
     return results
 
 
