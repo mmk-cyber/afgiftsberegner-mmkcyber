@@ -1,15 +1,20 @@
-name: Opdater DMR køretøjsdata
+name: Opdater DMR koeretoejsdata
 
 on:
   schedule:
-    # Hver mandag kl. 06:00 UTC (07:00/08:00 dansk tid afhængig af sommertid)
-    - cron: '0 6 * * 1'
+    # Hver mandag kl. 08:00 UTC (10:00 dansk sommertid / 09:00 vintertid)
+    - cron: '0 8 * * 1'
   workflow_dispatch:
     inputs:
       test_limit:
-        description: 'Begræns til N køretøjer (tom = fuld kørsel)'
+        description: 'Begraens til N koeretoejer (tom = fuld koersel)'
         required: false
         default: ''
+      force:
+        description: 'Tving koersel selvom filen er uaendret siden sidst'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   update-data:
@@ -21,20 +26,21 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Sæt Python op
+      - name: Saet Python op
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Hent og filtrer DMR-data
+      - name: Hent og byg DMR-database
         env:
           TEST_LIMIT: ${{ github.event.inputs.test_limit }}
-        run: python3 scripts/hent_og_filtrer_dmr.py
+          FORCE_RUN: ${{ github.event.inputs.force }}
+        run: python3 -u scripts/hent_og_filtrer_dmr.py
 
       - name: Commit og push opdateret data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/koeretoejer_filtreret.csv
-          git diff --cached --quiet && echo "Ingen ændringer i data" || git commit -m "Automatisk ugentlig opdatering af DMR-data"
+          git add data/koeretoejer.db data/last_processed.txt
+          git diff --cached --quiet && echo "Ingen aendringer i data" || git commit -m "Automatisk opdatering af DMR-data"
           git push
