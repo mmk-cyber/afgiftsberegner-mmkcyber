@@ -561,8 +561,18 @@ async function autoFetch(){
     while(true){
       await new Promise(r => setTimeout(r, 4000));
       const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-      if(elapsedSec > 900){
-        throw new Error('Søgningen tog for lang tid (over 15 minutter) — prøv igen, eller udfyld manuelt.');
+      // GRÆNSEN HÆVET 15 -> 25 MIN, fundet i praksis: en søgning på en langlivet model (BMW M3,
+      // mange årgange) ramte tidligere loftet på 900s og viste en fejl til brugeren, MENS
+      // serveren rent faktisk stadig arbejdede — bekræftet ved at spørge jobbets status direkte
+      // efter fejlen: jobbet var stadig i gang / blev færdigt kort efter, med et helt gyldigt
+      // (om end negativt: "ingen sammenligninger fundet") svar. Årsag: variant-tunge søgninger
+      // kræver at besøge BÅDE Bilbasens OG bilopslag.nu's enkelte annoncesider sekventielt (op
+      // til 15+10 sidevisninger, hver 15-25s på gratis-serverens 0.1 CPU), hvilket i praksis kan
+      // tage over 15 minutter i alt. 25 minutter er stadig en hård grænse (så en hængende
+      // browser-fane ikke poller for evigt), men rammer nu sjældnere en søgning der reelt var på
+      // vej til at blive færdig.
+      if(elapsedSec > 1500){
+        throw new Error('Søgningen tog for lang tid (over 25 minutter) — prøv igen, eller udfyld manuelt.');
       }
       let job;
       try{
@@ -581,7 +591,7 @@ async function autoFetch(){
         continue;
       }
       if(job.status === 'pending'){
-        statusEl.textContent = `Søger stadig (${elapsedSec}s) — kan tage op til 8-10 minutter på gratis-serveren. Du kan roligt lade siden være åben og vente, uden at klikke igen.`;
+        statusEl.textContent = `Søger stadig (${elapsedSec}s) — kan for nogle biler (fx modeller med mange varianter/årgange) tage op til 20-25 minutter på gratis-serveren. Du kan roligt lade siden være åben og vente, uden at klikke igen.`;
         continue;
       }
       if(job.status === 'error'){
