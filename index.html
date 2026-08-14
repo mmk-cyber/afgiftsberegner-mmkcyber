@@ -525,9 +525,10 @@ async function autoFetch(){
     statusEl.textContent = 'Backend ikke konfigureret endnu (BACKEND_URL er tom i kildekoden) — se afgiftsberegner-backend/README.md for opsætning. Indtast bilens data manuelt herunder i mellemtiden.';
     return;
   }
-  statusEl.textContent = 'Henter og beregner — kan tage op til et minut...';
   const btn = document.getElementById('autoFetchBtn');
   btn.disabled = true;
+  const startedAt = Date.now();
+  statusEl.textContent = 'Starter søgning...';
   try{
     const body = link
       ? { input: link }
@@ -537,16 +538,59 @@ async function autoFetch(){
     body.rate = parseFloat(document.getElementById('rate').value)||6;
     body.restRente = parseFloat(document.getElementById('restRente').value)||3.8;
 
-    const resp = await fetch(BACKEND_URL.replace(/\/$/,'') + '/beregn', {
+    // POLLING I STEDET FOR ÉT LANGT FETCH-KALD, tilføjet efter gentagne fund i praksis: en fuld
+    // søgning kan tage 3-8 minutter (sekventiel scraping på en langsom gratis-server), og
+    // browserens fetch() — især på mobil, men også desktop — gav ofte op undervejs ("Load
+    // failed"/"Failed to fetch"), SELVOM søgningen reelt lykkedes bagved uden nogen så resultatet.
+    // Backend starter nu bare jobbet og svarer med det samme (se main.py); siden spørger selv
+    // løbende ind i stedet for at holde én forbindelse åben i flere minutter — der er intet at
+    // time ud på, og man kan roligt lade siden stå og vente uden at skulle klikke igen.
+    const startResp = await fetch(BACKEND_URL.replace(/\/$/,'') + '/beregn-start', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body)
     });
-    if(!resp.ok){
-      const err = await resp.json().catch(()=>({}));
-      throw new Error((err.detail && err.detail.message) || `Serverfejl (${resp.status})`);
+    if(!startResp.ok){
+      const err = await startResp.json().catch(()=>({}));
+      throw new Error((err.detail && err.detail.message) || `Serverfejl (${startResp.status})`);
     }
-    const data = await resp.json();
+    const { jobId } = await startResp.json();
+
+    let data = null;
+    let pollFailures = 0;
+    while(true){
+      await new Promise(r => setTimeout(r, 4000));
+      const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+      if(elapsedSec > 900){
+        throw new Error('Søgningen tog for lang tid (over 15 minutter) — prøv igen, eller udfyld manuelt.');
+      }
+      let job;
+      try{
+        const statusResp = await fetch(BACKEND_URL.replace(/\/$/,'') + '/beregn-status/' + jobId);
+        if(!statusResp.ok){
+          throw new Error(`status ${statusResp.status}`);
+        }
+        job = await statusResp.json();
+        pollFailures = 0;
+      } catch(pollErr){
+        pollFailures++;
+        if(pollFailures >= 6){
+          throw new Error('Mistede forbindelsen til serveren under ventetid (' + pollErr.message + ').');
+        }
+        statusEl.textContent = `Netværksudfald, prøver igen... (${elapsedSec}s)`;
+        continue;
+      }
+      if(job.status === 'pending'){
+        statusEl.textContent = `Søger stadig (${elapsedSec}s) — kan tage op til 8-10 minutter på gratis-serveren. Du kan roligt lade siden være åben og vente, uden at klikke igen.`;
+        continue;
+      }
+      if(job.status === 'error'){
+        throw new Error(job.message || 'Ukendt fejl');
+      }
+      data = job.result;
+      break;
+    }
+
     document.getElementById('carName').value = data.car.carName || '';
     document.getElementById('co2').value = data.car.co2 || '';
     document.getElementById('ageMonths').value = data.car.ageMonths || '';

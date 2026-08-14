@@ -1,20 +1,46 @@
 """
 Afgiftsberegner — automatisk backend.
 
-POST /beregn
-  Body: { "input": "<mobile.de-link ELLER fritekst, fx 'BMW 335i Cabriolet 2010, kørt 175000 km'>",
-          "co2": <valgfri, override>, "months": 12, "downpct": 10, "rate": 6, "restRente": 3.8 }
+POST /beregn-start
+  Body: samme som det gamle POST /beregn (se BeregnRequest nedenfor).
+  Svarer STRAKS med {"jobId": "..."} og kører selve søgningen i baggrunden — se GET
+  /beregn-status/{jobId} for resultatet.
 
-  Kører "Fast metode": Bilbasen+DBA først, bilopslag.nu kun som backup/supplement for
-  "Værdi u. afgift"-feltet. Returnerer beregnet resultat + de sammenligninger der blev brugt,
-  så resultatet altid kan efterprøves — appen skal ALDRIG bare vise et tal uden at vise
-  grundlaget bag.
+  ASYNKRON JOB-ARKITEKTUR, tilføjet efter gentagne fund i praksis (aften/nat med Marco, august
+  2026): en fuld søgning tager typisk 3-8 minutter (sekventiel Playwright-scraping på Render's
+  gratis 0.1 CPU-plan — se scraper.py). Det gamle ét-langt-fetch-kald-design virkede fint fra en
+  tålmodig desktop-browser, men mobilens og til dels desktop-browserens egen fetch()-timeout gav
+  ofte op FØR serveren nåede at svare ("Load failed"/"Failed to fetch"), selvom søgningen reelt
+  lykkedes bagved uden brugeren nogensinde så resultatet. Værre: når brugeren (forståeligt nok)
+  troede intet skete og prøvede igen, endte to samtidige Playwright-scrapinger med at kæmpe om den
+  samme lille CPU og vælte hinanden med timeouts. Løsningen er at afkoble klientens ventetid fra
+  serverens svartid: /beregn-start returnerer med det samme, og frontend'en spørger selv løbende
+  ind (polling) i stedet for at holde én forbindelse åben i flere minutter — der er intet at time
+  ud på, og gentagne klik opretter ikke længere konkurrerende scraping-jobs (samme jobId genbruges
+  ikke, men brugeren behøver ikke længere klikke igen af utålmodighed, da statusteksten opdateres
+  løbende).
+
+GET /beregn-status/{jobId}
+  Returnerer {"status": "pending"} mens søgningen kører, eller {"status": "done", "result": {...}}
+  / {"status": "error", "message": "...", "warnings": [...]} når den er færdig. 404 hvis jobId er
+  ukendt (fx efter en server-genstart — job-listen er kun i hukommelsen, ikke persisteret).
+
+POST /beregn (bevaret for bagudkompatibilitet/manuel test, fx curl)
+  Samme som /beregn-start, men venter selv på hele resultatet før den svarer — bruges ikke
+  længere af index.html, men er nyttig til hurtig fejlfinding uden at skulle polle.
+
+  Kører "Fast metode": Bilbasen først, bilopslag.nu som backup/supplement for "Værdi u. afgift"-
+  feltet. DBA er FJERNET fra søgningen (se kommentar ved usable-beregningen nedenfor) — den
+  blokerede konsekvent alle automatiserede opslag (403 Forbidden) uden en eneste undtagelse i hele
+  testperioden og bidrog derfor aldrig noget, kun 4-5 minutters spildtid pr. søgning.
 
 Kør lokalt: uvicorn main:app --reload
 Se README.md for deployment (kræver headless Chromium — se scraper.py's docstring).
 """
 import asyncio
 import re
+import time
+import uuid
 from datetime import date
 from typing import Optional
 
@@ -108,8 +134,18 @@ def months_since(year: Optional[int], month: Optional[int] = None) -> Optional[f
     return (today.year - year) * 12 + (today.month - m)
 
 
-@app.post("/beregn")
-async def beregn(req: BeregnRequest):
+class BeregnError(Exception):
+    """Erstatter direkte HTTPException-raises inde i _compute, så samme funktion kan bruges af
+    både den synkrone /beregn-rute (som konverterer til HTTPException) og de asynkrone jobs
+    (som konverterer til en JOBS-fejlstatus) — HTTPException giver ikke mening at gemme i et
+    baggrundsjob, der ikke selv sender et HTTP-svar."""
+    def __init__(self, message: str, warnings: Optional[list[str]] = None):
+        self.message = message
+        self.warnings = warnings or []
+        super().__init__(message)
+
+
+async def _compute(req: BeregnRequest) -> dict:
     is_link = req.input.strip().startswith("http")
     warnings: list[str] = []
     fuel_type = req.fuel_type  # kan overskrives nedenfor, hvis vi kan auto-detektere den fra annoncen
@@ -127,13 +163,10 @@ async def beregn(req: BeregnRequest):
                 if foreign.get("blocked")
                 else "Kunne ikke finde en titel/bilnavn på siden — er linket korrekt, og er annoncen stadig aktiv?"
             )
-            raise HTTPException(status_code=422, detail={
-                "message": detail_msg,
-                "warnings": [
-                    "Prøv i stedet at indtaste bilens data manuelt (mærke, model, år, km, CO2), "
-                    "eller find et link til samme bil på en anden annonce-side.",
-                ],
-            })
+            raise BeregnError(detail_msg, [
+                "Prøv i stedet at indtaste bilens data manuelt (mærke, model, år, km, CO2), "
+                "eller find et link til samme bil på en anden annonce-side.",
+            ])
         car_name = foreign["title"] or req.input
         km = foreign["km"] or 0
         co2 = req.co2 or foreign["co2"] or 0
@@ -206,14 +239,18 @@ async def beregn(req: BeregnRequest):
             expected_body = hint
             break
 
-    # Kører SEKVENTIELT, ikke parallelt (asyncio.gather) — to samtidige headless Chromium-
-    # instanser overbelastede Render's Free-plan (0.1 CPU / 512MB) og forårsagede timeouts/
-    # genstarter i praksis. Tager længere tid samlet, men er markant mere stabilt.
+    # DBA FJERNET FRA SØGNINGEN, fundet i praksis (aften/nat med Marco, august 2026): DBA
+    # blokerede konsekvent ALLE automatiserede opslag fra denne server (403 Forbidden) — uden en
+    # eneste undtagelse gennem en hel test-session med snesevis af søgninger. Den bidrog derfor
+    # aldrig noget som helst brugbart, kun 4-5 minutters spildtid pr. søgning (ét helt
+    # sidebesøgs-forsøg der altid endte i 403), og gentagne automatiserede forsøg mod et site der
+    # aktivt blokerer én er ikke ønskværdigt at fortsætte med. Bilbasen + bilopslag.nu er tilbage
+    # som de eneste kilder — se scraper.py's search_dba, som stadig findes i koden men ikke
+    # længere kaldes herfra, hvis DBA nogensinde skulle stoppe med at blokere.
     bilbasen_raw = await scraper.search_bilbasen(maerke, model, expected_body)
-    dba_raw = await scraper.search_dba(f"{maerke} {model}", expected_body)
 
-    usable = [r for r in (bilbasen_raw + dba_raw) if not r.excluded]
-    excluded_count = len(bilbasen_raw) + len(dba_raw) - len(usable)
+    usable = [r for r in bilbasen_raw if not r.excluded]
+    excluded_count = len(bilbasen_raw) - len(usable)
     if excluded_count:
         warnings.append(f"{excluded_count} annoncer sorteret fra (forkert karrosseri, Uden afgift, eller Engros/CVR).")
 
@@ -375,18 +412,15 @@ async def beregn(req: BeregnRequest):
                     link=r.link, vaerdi_u_afgift=r.vaerdi_u_afgift, regafgift=r.regafgift,
                     opkraevet=r.opkraevet, andel_pct=r.andel_pct,
                 ))
-            warnings.append(f"Supplerede med {len(bilopslag_extra)} biler fra bilopslag.nu, da Bilbasen+DBA gav for få matches.")
+            warnings.append(f"Supplerede med {len(bilopslag_extra)} biler fra bilopslag.nu, da Bilbasen gav for få matches.")
         else:
             warnings.append(
-                f"Kun {len(comparisons)} gode Bilbasen/DBA-matches fundet, og bilopslag.nu-backup gav intet "
+                f"Kun {len(comparisons)} gode Bilbasen-matches fundet, og bilopslag.nu-backup gav intet "
                 "brugbart — resultatet er derfor mindre sikkert. Overvej at supplere manuelt."
             )
 
     if not comparisons:
-        raise HTTPException(status_code=422, detail={
-            "message": "Ingen brugbare sammenligninger fundet — kan ikke beregne et resultat.",
-            "warnings": warnings,
-        })
+        raise BeregnError("Ingen brugbare sammenligninger fundet — kan ikke beregne et resultat.", warnings)
 
     result = calc.full_calculation(
         comparisons, co2=co2, age_months=age_months, km_stand=km,
@@ -410,6 +444,69 @@ async def beregn(req: BeregnRequest):
         "leasing": {k: (round(v) if isinstance(v, (int, float)) else v) for k, v in result["leasing"].items()},
         "warnings": warnings,
     }
+
+
+@app.post("/beregn")
+async def beregn(req: BeregnRequest):
+    """Synkron variant, bevaret til manuel test/curl — se modulets docstring. index.html bruger
+    IKKE længere denne, da den holder forbindelsen åben i hele søgningens varighed (3-8 min), som
+    både mobil- og desktop-browseres fetch() ofte giver op på undervejs."""
+    try:
+        return await _compute(req)
+    except BeregnError as e:
+        raise HTTPException(status_code=422, detail={"message": e.message, "warnings": e.warnings})
+
+
+# JOB-LAGER, kun i hukommelsen — tilstrækkeligt til denne skala (én bruger, én Render-instans,
+# WEB_CONCURRENCY=1). Overlever IKKE en server-genstart/deploy (jf. index.html-instruktionerne om
+# ikke at deploye midt i en kørende søgning — det gælder stadig, men rammer nu kun jobbet, ikke
+# brugerens browser-forbindelse). Ryddes løbende i _purge_old_jobs for at undgå ubegrænset vækst,
+# hvis serveren kører længe uden genstart.
+JOBS: dict[str, dict] = {}
+_JOB_TTL_SECONDS = 60 * 60  # 1 time — rigeligt til selv den langsomste søgning + lidt polling-slør
+
+
+def _purge_old_jobs():
+    now = time.time()
+    stale = [jid for jid, j in JOBS.items() if now - j.get("createdAt", now) > _JOB_TTL_SECONDS]
+    for jid in stale:
+        del JOBS[jid]
+
+
+async def _run_job(job_id: str, req: BeregnRequest):
+    try:
+        result = await _compute(req)
+        JOBS[job_id] = {"status": "done", "result": result, "createdAt": JOBS[job_id]["createdAt"]}
+    except BeregnError as e:
+        JOBS[job_id] = {
+            "status": "error", "message": e.message, "warnings": e.warnings,
+            "createdAt": JOBS[job_id]["createdAt"],
+        }
+    except Exception as e:
+        # UVENTET fejl (fx en Playwright-crash, der ikke allerede er fanget længere nede) — vis
+        # den til brugeren i stedet for at lade jobbet hænge i "pending" for evigt, hvilket ville
+        # få frontend'en til at polle i det uendelige uden nogensinde at få et svar.
+        JOBS[job_id] = {
+            "status": "error", "message": f"Uventet serverfejl: {e}", "warnings": [],
+            "createdAt": JOBS[job_id]["createdAt"],
+        }
+
+
+@app.post("/beregn-start")
+async def beregn_start(req: BeregnRequest):
+    _purge_old_jobs()
+    job_id = uuid.uuid4().hex
+    JOBS[job_id] = {"status": "pending", "createdAt": time.time()}
+    asyncio.create_task(_run_job(job_id, req))
+    return {"jobId": job_id}
+
+
+@app.get("/beregn-status/{job_id}")
+async def beregn_status(job_id: str):
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Ukendt job-id (måske er serveren genstartet undervejs — prøv en ny søgning).")
+    return job
 
 
 @app.get("/health")
