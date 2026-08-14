@@ -1,0 +1,40 @@
+name: Opdater DMR køretøjsdata
+
+on:
+  schedule:
+    # Hver mandag kl. 06:00 UTC (07:00/08:00 dansk tid afhængig af sommertid)
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      test_limit:
+        description: 'Begræns til N køretøjer (tom = fuld kørsel)'
+        required: false
+        default: ''
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Sæt Python op
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Hent og filtrer DMR-data
+        env:
+          TEST_LIMIT: ${{ github.event.inputs.test_limit }}
+        run: python3 scripts/hent_og_filtrer_dmr.py
+
+      - name: Commit og push opdateret data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/koeretoejer_filtreret.csv
+          git diff --cached --quiet && echo "Ingen ændringer i data" || git commit -m "Automatisk ugentlig opdatering af DMR-data"
+          git push
