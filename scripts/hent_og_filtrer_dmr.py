@@ -238,7 +238,7 @@ def build_database(count_limit=None):
         cur.executemany(insert_sql, batch)
 
     print("Bygger indekser ...", flush=True)
-    cur.execute('CREATE UNIQUE INDEX idx_regnr ON koeretoejer(RegNr)')
+    cur.execute('CREATE INDEX idx_regnr ON koeretoejer(RegNr)')
     cur.execute('CREATE INDEX idx_stelnr ON koeretoejer(StelNr)')
     cur.execute('CREATE INDEX idx_maerke_model ON koeretoejer(Maerke, Model)')
     conn.commit()
