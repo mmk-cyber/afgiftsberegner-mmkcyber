@@ -564,6 +564,19 @@ async def fetch_foreign_listing(url: str) -> dict:
 
         check_text = f"{title} {page_title} {text[:500]}".lower()
         blocked = any(hint in check_text for hint in _BLOCKED_PAGE_HINTS)
+        # DEBUG, tilføjet efter fund i praksis: et rigtigt Marco-forsøg mod mobile.de blev
+        # rapporteret som "blokeret" til brugeren, uden at vi kunne se HVORFOR bagefter (intet
+        # logget dengang, modsat search_bilbasen/search_bilopslag_nu som begge har debug-prints).
+        # Log altid udfaldet her, så vi kan se om det reelt var bot-beskyttelse (matchede en af
+        # _BLOCKED_PAGE_HINTS) eller bare en tom/uventet side (title.strip() var tom uden at noget
+        # hint matchede) — de to kræver forskellige rettelser.
+        print(
+            f"[DEBUG fetch_foreign_listing] url={url} h1_title={title[:80]!r} "
+            f"page_title={page_title[:80]!r} blocked={blocked} "
+            f"matched_hints={[h for h in _BLOCKED_PAGE_HINTS if h in check_text]} "
+            f"body_snippet={text[:300]!r}",
+            flush=True,
+        )
         if blocked or not title.strip():
             return {
                 "title": "",
