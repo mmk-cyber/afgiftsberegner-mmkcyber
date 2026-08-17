@@ -15,13 +15,22 @@
      a. Find forhandlerannoncer for tilsvarende biler. Privatannoncer kun ved
         særlige grunde. Engrosannoncer som klar hovedregel aldrig.
         Undgå annoncer med over 90 liggedage. Værktøjet advarer selv om alle tre.
-     b. Træk registreringsudgifter fra annonceprisen FØRST (de indgår ikke i
-        afgiftsgrundlaget; transportomkostninger gør). Derefter 5 % annoncefradrag.
+     b. Træk registreringsudgifter fra annonceprisen FØRST, derefter 5 % annoncefradrag.
         Verificeret mod deres eksempel: (325.500 − 1.180) × 0,95 = 308.104 kr.
-     c. Trim billigste og dyreste — men KUN fra 5 annoncer og opefter, så der
-        altid er mindst 3 tilbage. Motorstyrelsens eget regneeksempel bruger
-        ALLE 3 annoncer i gennemsnittet; deres "undgå billigste og dyreste" er
-        vejledning til udvælgelsen, ikke en mekanisk trimning af det endelige sæt.
+        Registreringsudgiften er et fast beløb — prisen for ét sæt nummerplader,
+        jf. KØREGL § 8, stk. 1, nr. 1: 1.180 kr. for biler, 590 kr. for motorcykler.
+        Den fratrækkes KUN forhandlerannoncer omfattet af prismærkningsbekendtgørelsen.
+        Privatannoncer: hverken tillæg eller fradrag. Autocampere, busser og varebiler
+        over 2 t: kun hvis det positivt fremgår af annoncen. Værktøjet udfylder selv
+        efter annoncetype; feltet kan overskrives manuelt.
+        Transportomkostninger SKAL derimod indgå i afgiftsgrundlaget.
+     c. INGEN TRIMNING. Den juridiske vejledning I.A.1.5.3.1.2 indeholder ingen regel
+        om at fjerne billigste og dyreste annonce. Formuleringen "undgå den eller de
+        billigste og dyreste annonce(r)" på motorst.dk står i afsnittet om hvordan man
+        UDVÆLGER annoncer — det er vejledning til udsøgningen, ikke en mekanisk trimning.
+        Deres eget regneeksempel bruger alle 3 annoncer.
+        Krav: mindst 3 annoncer, gerne 5+. Færre kun undtagelsesvist ved helt specielle
+        køretøjer med meget sparsomt sammenligningsgrundlag.
      d. Gennemsnittet = handelsprisniveau (deres facit 290.529 kr — vi rammer det).
      e. Km-regulering mod annoncernes gennemsnitlige km-stand:
           - reguleres først ved over 10 % afvigelse
@@ -30,6 +39,11 @@
               under 1 år 0,31 · over 1 år 0,22 · over 2 år 0,20 · over 3 år 0,17
           - reguleringen må ikke overstige 10 % af handelsprisniveauet; af det
             overskydende medregnes kun halvdelen
+          - resultatet AFRUNDES til nærmeste hele 100 kr.
+          - alderen regnes i hele år, måneder ud over hele år rundes ned
+          - motorcykler reguleres normalt ikke for afvigende kilometerstand
+          Verificeret mod JV's eget eksempel: 520.000 × 0,2 × (150.000 − 171.000)
+          / 100.000 = −21.840 kr., der afrundet giver −21.800 kr.
      f. Ekstraudstyr der afviger fra annoncebilerne. Nedskrives med bilens
         værditab: over 1 år 70 % · 2 år 57 % · 3 år 45 % · 4 år 33 % · 5 år 20 %
         · 6 år 15 % · 7 år 10 % · over 8 år 0 %. Til og med 4. år trækkes
@@ -47,7 +61,15 @@
        - WLTP  : bruges direkte
        - NEDC  : ganges med 1,21 (§ 4 stk. 3, 2. pkt.) — gamle biler før ca. 2017
        - NEDC2 : KAN IKKE omregnes. Motorstyrelsen kræver det faktiske WLTP-tal
-                 fra COC-dokumentet. Gælder biler fra 2017-2020.
+                 fra COC-dokumentet. Gælder biler fra 09/2017-12/2020.
+     Målenormen bestemmes AUTOMATISK ud fra første registreringsdato (udledt af
+     bilens alder i måneder): før 09/2017 = NEDC · 09/2017-12/2020 = NEDC2 ·
+     fra 01/2021 = WLTP. Grænserne følger Motorstyrelsens nyhedsbrev om udløbet af
+     overgangsordningen (info.skat.dk, sagsnr. 21-0263157).
+     Knappen "Slå officielt dansk CO2-tal op" åbner Motorregistret via bilopslag.nu
+     forhåndsudfyldt på mærke og model. Motorregistret indeholder CO2-tallet for hver
+     indregistreret dansk bil — samme kilde Motorstyrelsen selv bruger. Aflæs feltet
+     "CO2-UDSLIP" under Miljø på en tilsvarende dansk bil.
 
   3) NEDSÆTTELSE AF SATSER (vaerditabScale) — § 4 stk. 6
      "Beløb i stk. 1, 2 og 5 nedsættes med samme procentdel, som køretøjets værdi
@@ -73,8 +95,11 @@
    - NEDC-omregningen manglede helt.
    - Annoncefradrag på 5 % og km-regulering manglede helt.
    - Ekstraudstyr, registreringsudgifter, annoncetype og liggedage manglede helt.
-   - Outlier-trimningen skete fra 3 annoncer og efterlod dermed kun ét tal at
-     regne på. Sker nu først fra 5.
+   - Outlier-trimningen var opfundet. Den findes ikke i Den juridiske vejledning
+     og er nu fjernet helt. Alle udvalgte annoncer indgår i gennemsnittet.
+   - Km-reguleringen blev ikke afrundet til nærmeste 100 kr.
+   - Registreringsudgifter skulle indtastes manuelt; udfyldes nu efter annoncetype.
+   - Målenormen skulle vælges manuelt; udledes nu af registreringsdatoen.
 
   MOTORCYKLER er ikke understøttet: de har egne skalatrin (25 % af 23.500,
   85 % af 23.500-79.800, 150 % af rest), intet CO2-tillæg og intet bundfradrag.
@@ -458,9 +483,10 @@
       <div class="field">
         <label for="maalenorm">Målenorm for CO2-tallet</label>
         <select id="maalenorm">
-          <option value="wltp">WLTP (biler fra ca. 2021+)</option>
-          <option value="nedc">NEDC — omregnes ×1,21 (biler før ca. 2017)</option>
-          <option value="nedc2">NEDC2 (2017–2020) — kræver rigtigt WLTP-tal</option>
+          <option value="auto">Automatisk ud fra registreringsdato</option>
+          <option value="wltp">WLTP (fra 01/2021)</option>
+          <option value="nedc">NEDC — omregnes ×1,21 (før 09/2017)</option>
+          <option value="nedc2">NEDC2 (09/2017–12/2020) — kræver rigtigt WLTP-tal</option>
         </select>
       </div>
       <div class="field">
@@ -483,6 +509,10 @@
         </select>
       </div>
     </div>
+    <div style="margin:12px 0 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <button class="addbtn no-print" id="co2LookupBtn" type="button" style="margin-top:0;">Slå officielt dansk CO2-tal op</button>
+      <span class="footnote" id="co2LookupNote" style="margin:0;flex:1;min-width:280px;"></span>
+    </div>
     <p class="footnote" style="margin:8px 0 0;">
       <strong>Nypris er påkrævet for en korrekt beregning.</strong> Registreringsafgiftslovens § 4, stk. 6 kræver, at
       skalatrin, CO2-satser og bundfradrag alle nedsættes med den procentdel, bilens værdi inkl. afgift er faldet
@@ -504,7 +534,7 @@
           <th>Beskrivelse</th>
           <th class="col-pris">Pris (kr.)</th>
           <th class="col-regudg">Reg.udg. (kr.)</th>
-          <th class="col-liggedage">Liggedage</th>
+          <th class="col-liggedage">Liggetid (dage)</th>
           <th class="col-dato">Dato</th>
           <th class="col-km">Km</th>
           <th class="col-vuafgift">Værdi u. afgift</th><th class="col-regafgift">Registreringsafgift</th><th class="col-opkraevet">Opkrævet afgift (kr.)</th><th class="col-andel">Andel (%)</th>
@@ -816,7 +846,10 @@ const RATES = {
   kmTaerskelPctOver10Aar: 33,  // biler over 10 aar: foerst ved >33%
   kmCapPct: 10,                // regulering over 10% af handelspris: kun halvdelen taeller
   nedcFaktor: 1.21,            // regafgiftsl. § 4 stk. 3, 2. pkt: NEDC x 1,21 -> WLTP-niveau
-  liggedageMax: 90,            // annoncer over 90 liggedage boer undgaas
+  liggetidMaxMdr: 3,           // JV: annoncer med liggetid over 3 mdr. medtages som hovedregel ikke
+  regUdgifterBil: 1180,        // KOEREGL § 8 stk. 1 nr. 1: et saet nummerplader (biler)
+  regUdgifterMc: 590,          // ... og for motorcykler
+  kmAfrunding: 100,            // JV: km-reguleringen afrundes til naermeste hele 100 kr.
   udstyrMinVaerdi: 10000,      // udstyr under 10.000 kr. ses der bort fra (biler over 1 aar)
   udstyrRadioBundfradrag: 30000, // radio/nav: kun vaerdien over 30.000 kr. medregnes
   indfasning: { konventionel: 1.0, phev: 0.68, ev: 0.40 },
@@ -852,6 +885,43 @@ function valueTax(value, scale){
 function effektivCo2(co2, maalenorm){
   if(maalenorm === 'nedc') return co2 * RATES.nedcFaktor;
   return co2;
+}
+
+// ---------- Automatisk bestemmelse af maalenorm ----------
+// Kilde: Motorstyrelsen, "Udloeb af overgangsordning med NEDC2 og overgang til WLTP-maalenorm"
+// (info.skat.dk, sagsnr. 21-0263157):
+//   - Nye personbiler var fra 1. september 2017 omfattet af overgangsordningen med NEDC2.
+//     (Varebiler foerst fra 1. september 2018.)
+//   - Overgangsordningen udloeb 31. december 2020.
+//   - Foer 09/2017: NEDC -> ganges med 1,21 jf. § 4 stk. 3, 2. pkt.
+//   - 09/2017-12/2020: NEDC2 -> KAN IKKE omregnes; kraever det faktiske WLTP-tal.
+//   - Fra 01/2021: WLTP -> bruges direkte.
+function maalenormFraFoersteReg(dato){
+  if(!(dato instanceof Date) || isNaN(dato)) return null;
+  const t = dato.getFullYear()*12 + dato.getMonth();      // maaneder siden aar 0
+  const nedc2Start = 2017*12 + 8;                          // september 2017
+  const wltpStart  = 2021*12 + 0;                          // januar 2021
+  if(t < nedc2Start) return { norm:'nedc',  grund:'første registrering før september 2017 — måles efter NEDC' };
+  if(t < wltpStart)  return { norm:'nedc2', grund:'første registrering i overgangsperioden september 2017 – december 2020 — måles efter NEDC2' };
+  return { norm:'wltp', grund:'første registrering fra januar 2021 — måles efter WLTP' };
+}
+
+// Foerste registreringsdato udledt af bilens alder i maaneder.
+function foersteRegFraAlder(ageMonths){
+  if(!ageMonths || ageMonths <= 0) return null;
+  const d = new Date();
+  d.setMonth(d.getMonth() - Math.round(ageMonths));
+  return d;
+}
+
+// Byg et bilopslag.nu-opslag paa maerke+model. Motorregistret indeholder det officielle danske
+// CO2-tal for hver indregistreret bil — det er samme tal Motorstyrelsen selv regner paa.
+function bilopslagSoegeUrl(maerke, model){
+  const p = new URLSearchParams();
+  if(maerke) p.append('brand_in[]', maerke.toUpperCase());
+  if(model)  p.append('model_in[]', model);
+  p.append('page','1');
+  return 'https://bilopslag.nu/avanceret-soegning?' + p.toString();
 }
 
 function co2Surcharge(co2, fuelType, scale){
@@ -927,6 +997,8 @@ function kmRegulering(handelsprisniveau, targetKm, avgKm, ageMonths){
     amount = Math.sign(amount) * (cap + excess/2);
     out.capped = true;
   }
+  // JV: "Der skal ske afrunding af resultatet til naermeste hele 100 kr."
+  amount = Math.round(amount / RATES.kmAfrunding) * RATES.kmAfrunding;
   out.amount = amount; out.applied = true; out.sats = sats;
   out.note = `Km-regulering: bilen har koert ${Math.abs(diff).toLocaleString('da-DK')} km ` +
              `${diff > 0 ? 'mindre' : 'mere'} end annoncegennemsnittet (${Math.round(avgKm).toLocaleString('da-DK')} km), ` +
@@ -1039,7 +1111,7 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, reg
     </select></td>
     <td><input type="text" class="c-beskrivelse" value="${beskrivelse||''}" placeholder="fx årgang/udstyr"></td>
     <td><input type="number" class="c-pris" value="${pris||''}" step="1000" min="0"></td>
-    <td><input type="number" class="c-regudgifter" value="${regUdgifter||''}" step="10" min="0" placeholder="fx 1180"></td>
+    <td><input type="number" class="c-regudgifter" value="${regUdgifter||''}" step="10" min="0" placeholder="auto" title="Tom = automatisk: 1.180 kr. ved forhandlerannonce, 0 ved privatannonce"></td>
     <td><input type="number" class="c-liggedage" value="${liggedage||''}" step="1" min="0" placeholder="dage"></td>
     <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
@@ -1114,41 +1186,56 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   // Trin 1: registreringsudgifter fratraekkes FOERST (de indgaar ikke i afgiftsgrundlaget),
   // derefter 5 % annoncefradrag. Jf. Motorstyrelsens eget regneeksempel:
   // (325.500 - 1.180) x 0,95 = 308.104 kr.
-  const adj = comparisons.map(c => Object.assign({}, c, {
-    prisJust: Math.max(0, c.pris - (c.regUdgifter||0)) * (1 - RATES.annonceFradragPct/100)
-  }));
+  // Registreringsudgifter, jf. JV I.A.1.5.3.1.2 og SKM2024.448.LSR:
+  //  - Forhandlerannoncer omfattet af prismaerkningsbekendtgoerelsen: traek 1.180 kr.
+  //    (et saet nummerplader, KOEREGL § 8 stk. 1 nr. 1). Transportomkostninger indgaar og
+  //    korrigeres der IKKE for.
+  //  - Privatannoncer: hverken tillaeg eller fradrag — reg.udgifter er irrelevante privat.
+  //  - Annoncer uden for prismaerkningsbekendtgoerelsen (varebil over 2 t, autocamper, bus):
+  //    traekkes kun hvis det positivt fremgaar af annoncen. Indtast da beloebet manuelt.
+  const adj = comparisons.map(c => {
+    const auto = c.annoncetype === 'forhandler' ? RATES.regUdgifterBil : 0;
+    const regU = (c.regUdgifter !== undefined && c.regUdgifter !== null && c.regUdgifter !== '')
+                   ? c.regUdgifter : auto;
+    return Object.assign({}, c, {
+      regUdgifterBrugt: regU,
+      prisJust: Math.max(0, c.pris - regU) * (1 - RATES.annonceFradragPct/100)
+    });
+  });
 
   // Annoncetype: engros skal som klar hovedregel ikke indgaa.
   const engros = adj.filter(c => c.annoncetype === 'engros');
   if(engros.length) advarsler.push(`${engros.length} engrosannonce(r) indgaar. Motorstyrelsen: engrosannoncer skal som klar hovedregel IKKE bruges — kun helt undtagelsesvist, og foerst efter en bredere soegning.`);
   const privat = adj.filter(c => c.annoncetype === 'privat');
   if(privat.length > adj.length/2) advarsler.push(`Flertallet af annoncerne er privatannoncer. Hovedreglen er forhandlerannoncer; privatannoncer kraever saerlige grunde (fx at bilen overvejende handles privat).`);
-  const gamle = adj.filter(c => c.liggedage > RATES.liggedageMax);
-  if(gamle.length) advarsler.push(`${gamle.length} annonce(r) har over ${RATES.liggedageMax} liggedage og boer undgaas.`);
+  const gamle = adj.filter(c => c.liggedage > RATES.liggetidMaxMdr*30);
+  if(gamle.length) advarsler.push(`${gamle.length} annonce(r) har en liggetid over ${RATES.liggetidMaxMdr} måneder. Jf. Den juridiske vejledning medtages de som hovedregel ikke, medmindre annonceprisen er justeret nedad. Ved helt specielle køretøjer kan perioden dog udvides, fordi omsætningshastigheden er lav.`);
+  if(adj.length < 3) advarsler.push(`Under 3 annoncer. Udgangspunktet er mindst 3 og gerne 5 eller flere; færre accepteres kun undtagelsesvist ved helt specielle køretøjer med meget sparsomt sammenligningsgrundlag.`);
 
-  let used = adj.slice().sort((a,b)=>a.prisJust-b.prisJust);
+  // ANTAL ANNONCER, jf. Den juridiske vejledning I.A.1.5.3.1.2:
+  // "Udgangspunktet er, at der ved en vaerdifastsaettelse skal anvendes mindst 3 annoncer til at
+  // understoette handelsprisen og gerne 5 eller flere." Undtagelsesvist faerre ved helt specielle
+  // koeretoejer med meget sparsomt sammenligningsgrundlag.
+  //
+  // VIGTIGT — INGEN TRIMNING: Den juridiske vejledning indeholder INGEN regel om at se bort fra
+  // den billigste og dyreste annonce. Motorstyrelsens formulering "undgaa den eller de billigste
+  // og dyreste annonce(r)" paa motorst.dk staar i afsnittet om hvordan man UDVAELGER annoncer —
+  // det er vejledning til menneskets udsoegning, ikke en mekanisk trimning af det faerdige saet.
+  // Deres eget regneeksempel bruger ALLE tre annoncer i gennemsnittet. Tidligere versioner af
+  // dette vaerktoej trimmede automatisk, hvilket gav et forkert handelsprisniveau.
+  const used = adj.slice().sort((a,b)=>a.prisJust-b.prisJust);
   let excludedNote = '';
-  let tier;
-  if(used.length < 3){
-    tier = 'thin';
-  } else if(used.length >= 5){
-    // RETTET: trimning af billigste/dyreste sker kun naar der er mindst 5 annoncer, saa der
-    // stadig er 3 tilbage bagefter. Motorstyrelsens eget regneeksempel bruger ALLE 3 annoncer
-    // i gennemsnittet — deres "undgaa billigste og dyreste" er vejledning til UDVAELGELSEN af
-    // annoncer, ikke en mekanisk trimning af det endelige saet. En tidligere version trimmede
-    // fra 3 og efterlod dermed kun ét tal at regne paa.
-    tier = 'ok';
-    const dropped = [used[0], used[used.length-1]];
-    used = used.slice(1, -1);
-    excludedNote = `Billigste (${fmt(dropped[0].pris)}) og dyreste (${fmt(dropped[1].pris)}) er set bort fra, jf. Motorstyrelsens praksis.`;
-  } else {
-    tier = 'mild';
-    excludedNote = `Alle ${used.length} annoncer indgaar. Billigste og dyreste trimmes foerst fra 5 annoncer, saa der altid er mindst 3 tilbage i gennemsnittet.`;
+  const tier = used.length < 3 ? 'thin' : (used.length >= 5 ? 'ok' : 'mild');
+  if(used.length >= 3){
+    excludedNote = `Alle ${used.length} annoncer indgår i gennemsnittet. Den juridiske vejledning har ingen regel om at fjerne billigste og dyreste — udvælg i stedet annoncer der ligner bilen mest muligt.`;
   }
 
   // Trin 2: gennemsnit af de justerede priser = handelsprisniveau.
   const niveau = used.reduce((s,c)=>s+c.prisJust,0) / used.length;
-  const steps = [{ label:`Gennemsnit af ${used.length} annonce(r) efter reg.udgifter og −${RATES.annonceFradragPct}% annoncefradrag`, value: niveau }];
+  const regSum = used.reduce((s,c)=>s+(c.regUdgifterBrugt||0),0);
+  const steps = [{ label:`Gennemsnit af ${used.length} annonce(r)` +
+    (regSum ? ` efter fradrag af registreringsudgifter` : '') +
+    ` og −${RATES.annonceFradragPct}% annoncefradrag`, value: niveau }];
 
   // Trin 3: km-regulering mod annoncernes gennemsnitlige km-stand.
   const withKm = used.filter(c => c.km > 0);
@@ -1265,7 +1352,7 @@ function serializeState(){
     ageMonths: document.getElementById('ageMonths').value,
     kmStand: document.getElementById('kmStand').value,
     co2Source: document.getElementById('co2Source').value,
-    maalenorm: (document.getElementById('maalenorm')||{}).value || 'wltp',
+    maalenorm: (document.getElementById('maalenorm')||{}).value || 'auto',
     nypris: (document.getElementById('nypris')||{}).value || '',
     stand: (document.getElementById('stand')||{}).value || 'middel',
     saerligAnvendelse: (document.getElementById('saerligAnvendelse')||{}).value || 'nej',
@@ -1301,7 +1388,7 @@ function applyState(state){
   document.getElementById('kmStand').value = state.kmStand || '';
   document.getElementById('co2Source').value = state.co2Source || '';
   const _set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
-  _set('maalenorm', state.maalenorm || 'wltp');
+  _set('maalenorm', state.maalenorm || 'auto');
   _set('nypris', state.nypris || '');
   _set('stand', state.stand || 'middel');
   _set('saerligAnvendelse', state.saerligAnvendelse || 'nej');
@@ -1376,7 +1463,12 @@ function renderAll(){
   const co2 = parseFloat(document.getElementById('co2').value) || 0;
   const ageMonths = parseFloat(document.getElementById('ageMonths').value) || 0;
 
-  const maalenorm = (document.getElementById('maalenorm')||{}).value || 'wltp';
+  let maalenorm = (document.getElementById('maalenorm')||{}).value || 'auto';
+  let normAuto = null;
+  if(maalenorm === 'auto'){
+    normAuto = maalenormFraFoersteReg(foersteRegFraAlder(ageMonths));
+    maalenorm = normAuto ? normAuto.norm : 'wltp';
+  }
   const nypris = parseFloat((document.getElementById('nypris')||{}).value) || 0;
   const stand = (document.getElementById('stand')||{}).value || 'middel';
   const saerlig = ((document.getElementById('saerligAnvendelse')||{}).value || 'nej') === 'ja';
@@ -1416,6 +1508,10 @@ function renderAll(){
   }
   if(maalenorm === 'nedc'){
     metodeAdvarsler.push(`NEDC-tallet ${co2} g/km er omregnet til ${co2Eff.toFixed(1)} g/km (×1,21), jf. § 4, stk. 3.`);
+  }
+  if(normAuto){
+    const navn = {nedc:'NEDC', nedc2:'NEDC2', wltp:'WLTP'}[normAuto.norm];
+    metodeAdvarsler.push(`Målenorm sat automatisk til <strong>${navn}</strong>: ${normAuto.grund}.`);
   }
   (market.advarsler || []).forEach(a => metodeAdvarsler.push(a));
   const advarselEl = document.getElementById('metodeAdvarsel');
@@ -1505,6 +1601,41 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
 // ---------------- Events ----------------
 document.getElementById('addCompBtn').addEventListener('click', () => { addCompRow(); renderAll(); });
 document.getElementById('addUdstyrBtn').addEventListener('click', () => { addUdstyrRow(); renderAll(); });
+
+// Slaar det officielle danske CO2-tal op i Motorregistret via bilopslag.nu.
+// Motorregistret indeholder CO2-tallet for hver indregistreret dansk bil — det er samme kilde
+// Motorstyrelsen selv bruger. Vaerktoejet kan ikke hente det automatisk (bilopslag.nu sender
+// ingen CORS-headere), men aabner soegningen forhaandsudfyldt paa maerke og model.
+document.getElementById('co2LookupBtn').addEventListener('click', () => {
+  const noteEl = document.getElementById('co2LookupNote');
+  const ageMonths = parseFloat(document.getElementById('ageMonths').value) || 0;
+  const reg = foersteRegFraAlder(ageMonths);
+  const norm = maalenormFraFoersteReg(reg);
+
+  let maerke = (document.getElementById('autoMaerke').value || '').trim();
+  let model  = (document.getElementById('autoModel').value || '').trim();
+  if(!maerke){
+    const cn = (document.getElementById('carName').value || '').trim().split(/\s+/);
+    maerke = cn[0] || ''; model = model || cn.slice(1).join(' ');
+  }
+  if(!maerke){
+    noteEl.innerHTML = 'Udfyld først mærke og model (felterne under «Automatisk opslag» eller «Mærke / model / variant»).';
+    return;
+  }
+
+  const dele = [];
+  if(reg) dele.push(`Første registrering skønnet til <strong>${reg.toLocaleDateString('da-DK',{month:'2-digit',year:'numeric'})}</strong> ud fra alderen på ${ageMonths} mdr.`);
+  if(norm){
+    const navn = {nedc:'NEDC', nedc2:'NEDC2', wltp:'WLTP'}[norm.norm];
+    dele.push(`Målenorm: <strong>${navn}</strong> — ${norm.grund}.`);
+    if(norm.norm === 'nedc')  dele.push('Tallet fra Motorregistret skal ganges med 1,21 — værktøjet gør det selv.');
+    if(norm.norm === 'nedc2') dele.push('<strong>Bemærk:</strong> NEDC2-tal kan ikke omregnes. Motorregistrets tal duer ikke direkte her — find det faktiske WLTP-tal i bilens COC-dokument eller hos importøren.');
+    if(norm.norm === 'wltp')  dele.push('Tallet fra Motorregistret kan bruges direkte.');
+  }
+  dele.push('Åbner bilopslag.nu — vælg en tilsvarende dansk bil og aflæs feltet «CO2-UDSLIP» under Miljø.');
+  noteEl.innerHTML = dele.join(' ');
+  window.open(bilopslagSoegeUrl(maerke, model), '_blank');
+});
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 document.getElementById('shareBtn').addEventListener('click', shareStateLink);
 document.getElementById('autoFetchBtn').addEventListener('click', autoFetch);
