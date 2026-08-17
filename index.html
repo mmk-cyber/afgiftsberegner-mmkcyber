@@ -14,11 +14,15 @@
   1) HANDELSPRIS (deriveMarketValue)
      a. Find forhandlerannoncer for tilsvarende biler. Privatannoncer kun ved
         særlige grunde. Engrosannoncer som klar hovedregel aldrig.
-        Undgå annoncer med over 90 liggedage.
-     b. Træk 5 % fra hver annoncepris (typisk forhandlerrabat). Gælder også
-        privatannoncer.
-     c. Se bort fra billigste og dyreste annonce.
-     d. Gennemsnittet = handelsprisniveau.
+        Undgå annoncer med over 90 liggedage. Værktøjet advarer selv om alle tre.
+     b. Træk registreringsudgifter fra annonceprisen FØRST (de indgår ikke i
+        afgiftsgrundlaget; transportomkostninger gør). Derefter 5 % annoncefradrag.
+        Verificeret mod deres eksempel: (325.500 − 1.180) × 0,95 = 308.104 kr.
+     c. Trim billigste og dyreste — men KUN fra 5 annoncer og opefter, så der
+        altid er mindst 3 tilbage. Motorstyrelsens eget regneeksempel bruger
+        ALLE 3 annoncer i gennemsnittet; deres "undgå billigste og dyreste" er
+        vejledning til udvælgelsen, ikke en mekanisk trimning af det endelige sæt.
+     d. Gennemsnittet = handelsprisniveau (deres facit 290.529 kr — vi rammer det).
      e. Km-regulering mod annoncernes gennemsnitlige km-stand:
           - reguleres først ved over 10 % afvigelse
           - biler over 10 år: først ved over 33 % afvigelse
@@ -26,8 +30,16 @@
               under 1 år 0,31 · over 1 år 0,22 · over 2 år 0,20 · over 3 år 0,17
           - reguleringen må ikke overstige 10 % af handelsprisniveauet; af det
             overskydende medregnes kun halvdelen
-     f. Vedligeholdelsesstand ±2 % (ikke for biler under 6 mdr.)
-     g. Særlig anvendelse (skiftende chauffører) −5 %
+     f. Ekstraudstyr der afviger fra annoncebilerne. Nedskrives med bilens
+        værditab: over 1 år 70 % · 2 år 57 % · 3 år 45 % · 4 år 33 % · 5 år 20 %
+        · 6 år 15 % · 7 år 10 % · over 8 år 0 %. Til og med 4. år trækkes
+        yderligere 1 % pr. overskydende måned (1 år 4 mdr. = 70 − 4 = 66 %).
+        På biler over 1 år ses der helt bort fra: udstyr med nypris under
+        10.000 kr., alufælge, trækkrog, mobiltelefonudstyr og sikkerhedsudstyr.
+        For radio/navigation medregnes kun værdien over 30.000 kr. pr. del.
+        Verificeret mod deres eksempel: samlet tillæg 5.117 kr. — vi rammer det.
+     g. Vedligeholdelsesstand ±2 % (ikke for biler under 6 mdr.)
+     h. Særlig anvendelse (skiftende chauffører) −5 %
         Stand + særlig anvendelse højst 20.000 kr. tilsammen.
 
   2) CO2-TAL (effektivCo2)
@@ -60,6 +72,9 @@
    - § 4 stk. 6-nedsættelsen manglede helt.
    - NEDC-omregningen manglede helt.
    - Annoncefradrag på 5 % og km-regulering manglede helt.
+   - Ekstraudstyr, registreringsudgifter, annoncetype og liggedage manglede helt.
+   - Outlier-trimningen skete fra 3 annoncer og efterlod dermed kun ét tal at
+     regne på. Sker nu først fra 5.
 
   MOTORCYKLER er ikke understøttet: de har egne skalatrin (25 % af 23.500,
   85 % af 23.500-79.800, 150 % af rest), intet CO2-tillæg og intet bundfradrag.
@@ -141,7 +156,7 @@
   .seg button.active{background:var(--ink); color:var(--paper);}
 
   .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px;}
-  table.comp{width:100%; min-width:1060px; border-collapse:collapse; font-size:13.5px;}
+  table.comp{width:100%; min-width:1340px; border-collapse:collapse; font-size:13.5px;}
   table.comp th{
     text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--muted); font-weight:500; padding:0 8px 8px 0; border-bottom:1px solid var(--line);
@@ -155,6 +170,7 @@
      kombineret med tabellens min-width og .table-scroll (vandret scroll i stedet for at klemme
      kolonnerne sammen på smalle skærme), sikrer plads til mindst 7 cifre. */
   table.comp th.col-kilde{width:100px;} table.comp th.col-pris{width:110px;}
+  table.comp th.col-annoncetype{width:105px;} table.comp th.col-regudg{width:95px;} table.comp th.col-liggedage{width:80px;}
   table.comp th.col-dato{width:75px;} table.comp th.col-km{width:95px;}
   table.comp th.col-vuafgift{width:110px;} table.comp th.col-regafgift{width:120px;}
   table.comp th.col-opkraevet{width:110px;} table.comp th.col-andel{width:70px;}
@@ -484,8 +500,11 @@
       <thead>
         <tr>
           <th class="col-kilde">Kilde</th>
+          <th class="col-annoncetype">Annoncetype</th>
           <th>Beskrivelse</th>
           <th class="col-pris">Pris (kr.)</th>
+          <th class="col-regudg">Reg.udg. (kr.)</th>
+          <th class="col-liggedage">Liggedage</th>
           <th class="col-dato">Dato</th>
           <th class="col-km">Km</th>
           <th class="col-vuafgift">Værdi u. afgift</th><th class="col-regafgift">Registreringsafgift</th><th class="col-opkraevet">Opkrævet afgift (kr.)</th><th class="col-andel">Andel (%)</th>
@@ -497,6 +516,32 @@
     </table>
     </div>
     <button class="addbtn no-print" id="addCompBtn" type="button">+ Tilføj sammenligning</button>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:26px 0 4px;">Ekstraudstyr der afviger fra sammenligningsbilerne</h3>
+    <p class="footnote" style="margin:0 0 10px;">
+      Kun udstyr hvor <em>din</em> bil adskiller sig fra annoncebilerne. Har din bil <strong>mere</strong> udstyr, vælg «Bilen har det» (tillæg);
+      har annoncebilerne det og din bil ikke, vælg «Annoncebilerne har det» (fradrag). Angiv udstyrets <strong>oprindelige nypris</strong> —
+      værktøjet nedskriver selv efter Motorstyrelsens tabel og anvender undtagelserne (udstyr under 10.000 kr., alufælge, trækkrog,
+      mobiludstyr og sikkerhedsudstyr ses der bort fra på biler over 1 år; for radio/navigation medregnes kun værdien over 30.000 kr.).
+    </p>
+    <div class="table-scroll">
+    <table class="comp" style="min-width:720px;">
+      <thead>
+        <tr>
+          <th>Udstyr</th>
+          <th style="width:120px;">Nypris (kr.)</th>
+          <th style="width:150px;">Type</th>
+          <th style="width:180px;">Retning</th>
+          <th style="width:130px;">Reguleret værdi</th>
+          <th class="col-remove"></th>
+        </tr>
+      </thead>
+      <tbody id="udstyrBody"></tbody>
+    </table>
+    </div>
+    <button class="addbtn no-print" id="addUdstyrBtn" type="button">+ Tilføj udstyr</button>
+    <div id="udstyrNote" class="footnote" style="margin-top:8px;"></div>
+
     <div id="confidenceBanner"></div>
       <div id="metodeAdvarsel"></div>
     <div class="basisnote" id="basisNote"></div><div class="basisnote" id="afgiftAndelNote" style="margin-top:4px"></div>
@@ -771,6 +816,9 @@ const RATES = {
   kmTaerskelPctOver10Aar: 33,  // biler over 10 aar: foerst ved >33%
   kmCapPct: 10,                // regulering over 10% af handelspris: kun halvdelen taeller
   nedcFaktor: 1.21,            // regafgiftsl. § 4 stk. 3, 2. pkt: NEDC x 1,21 -> WLTP-niveau
+  liggedageMax: 90,            // annoncer over 90 liggedage boer undgaas
+  udstyrMinVaerdi: 10000,      // udstyr under 10.000 kr. ses der bort fra (biler over 1 aar)
+  udstyrRadioBundfradrag: 30000, // radio/nav: kun vaerdien over 30.000 kr. medregnes
   indfasning: { konventionel: 1.0, phev: 0.68, ev: 0.40 },
   extraDeduction: { konventionel: 0, phev: 43000, ev: 161300 }
 };
@@ -887,6 +935,53 @@ function kmRegulering(handelsprisniveau, targetKm, avgKm, ageMonths){
   return out;
 }
 
+// ---------- Ekstraudstyr, jf. Motorstyrelsens nedskrivningstabel ----------
+// Tillaeg/fradrag for udstyr nedskrives med bilens vaerditab i %.
+// Til og med 4. aar regnes i hele aar plus overskydende maaneder (1 % pr. md.).
+function udstyrNedskrivning(ageMonths){
+  if(ageMonths < 12) return 1.00;                 // under 1 aar: fuld vaerdi
+  const y = Math.floor(ageMonths/12), m = ageMonths % 12;
+  const base = {1:0.70, 2:0.57, 3:0.45, 4:0.33};
+  if(y <= 4) return Math.max(0, base[y] - m*0.01);
+  if(y === 5) return 0.20;
+  if(y === 6) return 0.15;
+  if(y === 7) return 0.10;
+  return 0;                                        // over 8 aar: 0 %
+}
+
+// Udstyrstyper der helt ses bort fra paa biler over 1 aar.
+const UDSTYR_UDELADT = ['alufaelge','traekkrog','mobil','sikkerhed'];
+
+function udstyrVaerdi(item, ageMonths){
+  const over1aar = ageMonths >= 12;
+  const nypris = item.nypris || 0;
+  if(nypris <= 0) return { vaerdi: 0, grund: 'ingen nypris' };
+  if(over1aar){
+    if(UDSTYR_UDELADT.includes(item.type))
+      return { vaerdi: 0, grund: 'udstyrstype ses der bort fra' };
+    if(nypris < RATES.udstyrMinVaerdi)
+      return { vaerdi: 0, grund: 'nypris under ' + RATES.udstyrMinVaerdi.toLocaleString('da-DK') + ' kr.' };
+  }
+  let grundlag = nypris;
+  if(item.type === 'radionav'){
+    grundlag = Math.max(0, nypris - RATES.udstyrRadioBundfradrag);
+    if(grundlag === 0) return { vaerdi: 0, grund: 'hele vaerdien under 30.000 kr.' };
+  }
+  const pct = udstyrNedskrivning(ageMonths);
+  return { vaerdi: grundlag * pct * (item.retning || 1), pct, grundlag };
+}
+
+function samletUdstyrsregulering(items, ageMonths){
+  let sum = 0; const linjer = [];
+  (items||[]).forEach(it => {
+    const r = udstyrVaerdi(it, ageMonths);
+    sum += r.vaerdi;
+    linjer.push({ navn: it.navn, nypris: it.nypris, retning: it.retning,
+                  vaerdi: r.vaerdi, pct: r.pct, grund: r.grund });
+  });
+  return { sum, linjer };
+}
+
 function forholdsmaessigRate(ageMonths){
   if(ageMonths < 3) return 0.020;
   if(ageMonths < 36) return 0.010;
@@ -926,7 +1021,7 @@ function annuityWithBalloon(P, B, annualRatePct, n){
 
 // ---------------- Sammenligningstabel ----------------
 let compRowId = 0;
-function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, regafgift, opkraevet, andelPct){
+function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, regafgift, opkraevet, andelPct, annoncetype, regUdgifter, liggedage){
   const id = 'c'+(compRowId++);
   const tr = document.createElement('tr');
   tr.dataset.rowId = id;
@@ -937,8 +1032,15 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, reg
       <option${kilde==='bilopslag.nu'?' selected':''}>bilopslag.nu</option>
       <option${kilde==='Andet'?' selected':''}>Andet</option>
     </select></td>
+    <td><select class="c-annoncetype">
+      <option value="forhandler"${(annoncetype||'forhandler')==='forhandler'?' selected':''}>Forhandler</option>
+      <option value="privat"${annoncetype==='privat'?' selected':''}>Privat</option>
+      <option value="engros"${annoncetype==='engros'?' selected':''}>Engros</option>
+    </select></td>
     <td><input type="text" class="c-beskrivelse" value="${beskrivelse||''}" placeholder="fx årgang/udstyr"></td>
     <td><input type="number" class="c-pris" value="${pris||''}" step="1000" min="0"></td>
+    <td><input type="number" class="c-regudgifter" value="${regUdgifter||''}" step="10" min="0" placeholder="fx 1180"></td>
+    <td><input type="number" class="c-liggedage" value="${liggedage||''}" step="1" min="0" placeholder="dage"></td>
     <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
     <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-regafgift" value="${regafgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-opkraevet" value="${opkraevet||''}" step="100" min="0" placeholder="opkrævet afgift"></td><td><input type="number" class="c-andel" value="${andelPct||''}" step="0.1" min="0" placeholder="%"></td>
@@ -949,11 +1051,51 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, reg
   tr.querySelector('.rowbtn').addEventListener('click', () => { tr.remove(); renderAll(); });
 }
 
+let udstyrRowId = 0;
+function addUdstyrRow(navn, nypris, type, retning){
+  const tr = document.createElement('tr');
+  tr.dataset.rowId = 'u'+(udstyrRowId++);
+  tr.innerHTML = `
+    <td><input type="text" class="u-navn" value="${navn||''}" placeholder="fx læderkabine"></td>
+    <td><input type="number" class="u-nypris" value="${nypris||''}" step="500" min="0"></td>
+    <td><select class="u-type">
+      <option value="normal"${(type||'normal')==='normal'?' selected':''}>Almindeligt udstyr</option>
+      <option value="radionav"${type==='radionav'?' selected':''}>Radio / navigation</option>
+      <option value="alufaelge"${type==='alufaelge'?' selected':''}>Alufælge</option>
+      <option value="traekkrog"${type==='traekkrog'?' selected':''}>Trækkrog</option>
+      <option value="mobil"${type==='mobil'?' selected':''}>Mobiltelefonudstyr</option>
+      <option value="sikkerhed"${type==='sikkerhed'?' selected':''}>Sikkerhedsudstyr</option>
+    </select></td>
+    <td><select class="u-retning">
+      <option value="1"${String(retning||1)==='1'?' selected':''}>Bilen har det (tillæg)</option>
+      <option value="-1"${String(retning)==='-1'?' selected':''}>Annoncebilerne har det (fradrag)</option>
+    </select></td>
+    <td class="u-resultat" style="font-family:var(--mono);font-size:12px;">–</td>
+    <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
+  document.getElementById('udstyrBody').appendChild(tr);
+  tr.querySelectorAll('input, select').forEach(el => el.addEventListener('input', renderAll));
+  tr.querySelectorAll('select').forEach(el => el.addEventListener('change', renderAll));
+  tr.querySelector('.rowbtn').addEventListener('click', () => { tr.remove(); renderAll(); });
+}
+
+function getUdstyr(){
+  return Array.from(document.querySelectorAll('#udstyrBody tr')).map(tr => ({
+    navn: tr.querySelector('.u-navn').value,
+    nypris: parseFloat(tr.querySelector('.u-nypris').value) || 0,
+    type: tr.querySelector('.u-type').value,
+    retning: parseInt(tr.querySelector('.u-retning').value, 10) || 1,
+    _tr: tr
+  })).filter(u => u.nypris > 0);
+}
+
 function getComparisons(){
   return Array.from(document.querySelectorAll('#compBody tr')).map(tr => ({
     kilde: tr.querySelector('.c-kilde').value,
+    annoncetype: (tr.querySelector('.c-annoncetype')||{}).value || 'forhandler',
     beskrivelse: tr.querySelector('.c-beskrivelse').value,
     pris: parseFloat(tr.querySelector('.c-pris').value) || 0,
+    regUdgifter: parseFloat((tr.querySelector('.c-regudgifter')||{}).value) || 0,
+    liggedage: parseFloat((tr.querySelector('.c-liggedage')||{}).value) || 0,
     dato: tr.querySelector('.c-dato').value,
     km: parseFloat(tr.querySelector('.c-km').value) || 0,
     vaerdiUAfgift: parseFloat(tr.querySelector('.c-vaerdiuafgift').value) || 0, regafgift: parseFloat(tr.querySelector('.c-regafgift').value) || 0, opkraevet: parseFloat(tr.querySelector('.c-opkraevet').value) || 0, andelPct: parseFloat(tr.querySelector('.c-andel').value) || 0,
@@ -961,32 +1103,52 @@ function getComparisons(){
   })).filter(c => c.pris > 0);
 }
 
-function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnvendelse){
+function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnvendelse, udstyr){
   const empty = { totalIncl:0, tier:'none', usedCount:0, excludedNote:'', niveau:0,
-                  kmReg:{amount:0,applied:false,note:''}, standKr:0, saerligKr:0, steps:[] };
+                  kmReg:{amount:0,applied:false,note:''}, standKr:0, saerligKr:0,
+                  udstyrKr:0, udstyrLinjer:[], advarsler:[], steps:[] };
   if(comparisons.length === 0) return empty;
 
-  // Trin 1: annoncefradrag -5% paa hver annonce (gaelder ogsaa privatannoncer).
+  const advarsler = [];
+
+  // Trin 1: registreringsudgifter fratraekkes FOERST (de indgaar ikke i afgiftsgrundlaget),
+  // derefter 5 % annoncefradrag. Jf. Motorstyrelsens eget regneeksempel:
+  // (325.500 - 1.180) x 0,95 = 308.104 kr.
   const adj = comparisons.map(c => Object.assign({}, c, {
-    prisJust: c.pris * (1 - RATES.annonceFradragPct/100)
+    prisJust: Math.max(0, c.pris - (c.regUdgifter||0)) * (1 - RATES.annonceFradragPct/100)
   }));
+
+  // Annoncetype: engros skal som klar hovedregel ikke indgaa.
+  const engros = adj.filter(c => c.annoncetype === 'engros');
+  if(engros.length) advarsler.push(`${engros.length} engrosannonce(r) indgaar. Motorstyrelsen: engrosannoncer skal som klar hovedregel IKKE bruges — kun helt undtagelsesvist, og foerst efter en bredere soegning.`);
+  const privat = adj.filter(c => c.annoncetype === 'privat');
+  if(privat.length > adj.length/2) advarsler.push(`Flertallet af annoncerne er privatannoncer. Hovedreglen er forhandlerannoncer; privatannoncer kraever saerlige grunde (fx at bilen overvejende handles privat).`);
+  const gamle = adj.filter(c => c.liggedage > RATES.liggedageMax);
+  if(gamle.length) advarsler.push(`${gamle.length} annonce(r) har over ${RATES.liggedageMax} liggedage og boer undgaas.`);
 
   let used = adj.slice().sort((a,b)=>a.prisJust-b.prisJust);
   let excludedNote = '';
   let tier;
   if(used.length < 3){
     tier = 'thin';
-  } else {
-    // Motorstyrelsen: undgaa "den eller de billigste og dyreste annonce(r)".
-    tier = used.length >= 5 ? 'ok' : 'mild';
+  } else if(used.length >= 5){
+    // RETTET: trimning af billigste/dyreste sker kun naar der er mindst 5 annoncer, saa der
+    // stadig er 3 tilbage bagefter. Motorstyrelsens eget regneeksempel bruger ALLE 3 annoncer
+    // i gennemsnittet — deres "undgaa billigste og dyreste" er vejledning til UDVAELGELSEN af
+    // annoncer, ikke en mekanisk trimning af det endelige saet. En tidligere version trimmede
+    // fra 3 og efterlod dermed kun ét tal at regne paa.
+    tier = 'ok';
     const dropped = [used[0], used[used.length-1]];
     used = used.slice(1, -1);
     excludedNote = `Billigste (${fmt(dropped[0].pris)}) og dyreste (${fmt(dropped[1].pris)}) er set bort fra, jf. Motorstyrelsens praksis.`;
+  } else {
+    tier = 'mild';
+    excludedNote = `Alle ${used.length} annoncer indgaar. Billigste og dyreste trimmes foerst fra 5 annoncer, saa der altid er mindst 3 tilbage i gennemsnittet.`;
   }
 
   // Trin 2: gennemsnit af de justerede priser = handelsprisniveau.
   const niveau = used.reduce((s,c)=>s+c.prisJust,0) / used.length;
-  const steps = [{ label:`Gennemsnit af ${used.length} annonce(r) efter −${RATES.annonceFradragPct}% annoncefradrag`, value: niveau }];
+  const steps = [{ label:`Gennemsnit af ${used.length} annonce(r) efter reg.udgifter og −${RATES.annonceFradragPct}% annoncefradrag`, value: niveau }];
 
   // Trin 3: km-regulering mod annoncernes gennemsnitlige km-stand.
   const withKm = used.filter(c => c.km > 0);
@@ -996,13 +1158,18 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
 
   let handelspris = niveau + kmReg.amount;
 
-  // Trin 4: vedligeholdelsesstand +/- 2% (ikke for biler under 6 mdr.).
+  // Trin 4: ekstraudstyr der afviger fra sammenligningsbilerne.
+  const uds = samletUdstyrsregulering(udstyr, ageMonths);
+  if(uds.sum) steps.push({ label:'Ekstraudstyr', value: uds.sum, signed:true });
+  handelspris += uds.sum;
+
+  // Trin 5: vedligeholdelsesstand +/- 2 % (ikke for biler under 6 mdr.).
   let standKr = 0;
   if(stand && stand !== 'middel' && ageMonths >= 6){
     standKr = handelspris * (RATES.standTillaegPct/100) * (stand === 'over' ? 1 : -1);
   }
 
-  // Trin 5: saerlig anvendelse (skiftende chauffoerer) -5%, kun biler over 6 mdr.
+  // Trin 6: saerlig anvendelse (skiftende chauffoerer) -5 %, kun biler over 6 mdr.
   let saerligKr = 0;
   if(saerligAnvendelse && ageMonths >= 6){
     saerligKr = -handelspris * (RATES.saerligAnvendelsePct/100);
@@ -1023,7 +1190,8 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   steps.push({ label:'Handelspris', value: handelspris, bold:true });
 
   return { totalIncl: handelspris, tier, usedCount: used.length, excludedNote,
-           niveau, avgKm, kmReg, standKr, saerligKr, steps };
+           niveau, avgKm, kmReg, standKr, saerligKr,
+           udstyrKr: uds.sum, udstyrLinjer: uds.linjer, advarsler, steps };
 }
 
 function deriveResidualValue(comparisons, targetKm){
@@ -1075,8 +1243,11 @@ function deriveResidualValueCombined(comparisons, targetKm, exAfgiftValue, ageMo
 function serializeState(){
   const comps = Array.from(document.querySelectorAll('#compBody tr')).map(tr => ({
     kilde: tr.querySelector('.c-kilde').value,
+    annoncetype: (tr.querySelector('.c-annoncetype')||{}).value || 'forhandler',
     beskrivelse: tr.querySelector('.c-beskrivelse').value,
     pris: tr.querySelector('.c-pris').value,
+    regUdgifter: (tr.querySelector('.c-regudgifter')||{}).value || '',
+    liggedage: (tr.querySelector('.c-liggedage')||{}).value || '',
     dato: tr.querySelector('.c-dato').value,
     km: tr.querySelector('.c-km').value,
     vaerdiUAfgift: tr.querySelector('.c-vaerdiuafgift').value,
@@ -1102,7 +1273,13 @@ function serializeState(){
     downpct: document.getElementById('downpct').value,
     rate: document.getElementById('rate').value,
     restRente: document.getElementById('restRente').value,
-    comps
+    comps,
+    udstyr: Array.from(document.querySelectorAll('#udstyrBody tr')).map(tr => ({
+      navn: tr.querySelector('.u-navn').value,
+      nypris: tr.querySelector('.u-nypris').value,
+      type: tr.querySelector('.u-type').value,
+      retning: tr.querySelector('.u-retning').value
+    }))
   };
 }
 
@@ -1135,7 +1312,9 @@ function applyState(state){
   setFuelByDisplay(state.fuelDisplay || 'Benzin');
 
   document.getElementById('compBody').innerHTML = '';
-  (state.comps || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct));
+  document.getElementById('udstyrBody').innerHTML = '';
+  (state.udstyr || []).forEach(u => addUdstyrRow(u.navn, u.nypris, u.type, u.retning));
+  (state.comps || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct, c.annoncetype, c.regUdgifter, c.liggedage));
 }
 
 function loadStateFromHash(){
@@ -1205,7 +1384,23 @@ function renderAll(){
   const co2Eff = effektivCo2(co2, maalenorm);
 
   const comparisons = getComparisons();
-  const market = deriveMarketValue(comparisons, kmStandVal, ageMonths, stand, saerlig);
+  const udstyrItems = getUdstyr();
+  const market = deriveMarketValue(comparisons, kmStandVal, ageMonths, stand, saerlig, udstyrItems);
+
+  // Vis nedskrevet vaerdi pr. udstyrslinje
+  udstyrItems.forEach((it, idx) => {
+    const cell = it._tr.querySelector('.u-resultat');
+    const r = udstyrVaerdi(it, ageMonths);
+    if(!cell) return;
+    cell.textContent = r.grund ? '0 kr. — ' + r.grund
+      : (r.vaerdi > 0 ? '+' : '') + fmt(r.vaerdi) + ' (' + Math.round(r.pct*100) + '%)';
+  });
+  const udstyrNoteEl = document.getElementById('udstyrNote');
+  if(udstyrNoteEl){
+    udstyrNoteEl.textContent = udstyrItems.length
+      ? `Samlet udstyrsregulering: ${market.udstyrKr >= 0 ? '+' : ''}${fmt(market.udstyrKr)} ved en nedskrivning på ${Math.round(udstyrNedskrivning(ageMonths)*100)} % (bilens alder ${Math.floor(ageMonths/12)} år og ${ageMonths%12} mdr.).`
+      : '';
+  }
   const scale = vaerditabScale(market.totalIncl, nypris);
   renderConfidenceBanner(market, comparisons.length, comparisons); const withAndel = comparisons.filter(c => c.andelPct > 0); const afgiftAndelEl = document.getElementById('afgiftAndelNote'); if(withAndel.length > 0){ const avgAndel = withAndel.reduce((s,c)=>s+c.andelPct,0)/withAndel.length; const minA = Math.min(...withAndel.map(c=>c.andelPct)); const maxA = Math.max(...withAndel.map(c=>c.andelPct)); afgiftAndelEl.textContent = `Til sammenligning: sammenligningsbilernes seneste §3b-opkrævninger lå på ${avgAndel.toFixed(1)}% i snit (spænd ${minA.toFixed(1)}-${maxA.toFixed(1)}%) af den daværende restafgift, jf. bilopslag.nu. Perioderne varierer i længde, så tallet er kun en grov sanity-check af §3b-satsen nedenfor og indgår ikke i selve beregningen.`; } else if(afgiftAndelEl){ afgiftAndelEl.textContent = ''; }
 
@@ -1222,10 +1417,11 @@ function renderAll(){
   if(maalenorm === 'nedc'){
     metodeAdvarsler.push(`NEDC-tallet ${co2} g/km er omregnet til ${co2Eff.toFixed(1)} g/km (×1,21), jf. § 4, stk. 3.`);
   }
+  (market.advarsler || []).forEach(a => metodeAdvarsler.push(a));
   const advarselEl = document.getElementById('metodeAdvarsel');
   if(advarselEl){
     advarselEl.innerHTML = metodeAdvarsler.length
-      ? `<div class="banner ${(!nypris||nypris<=0)||maalenorm==='nedc2' ? 'thin' : 'ok'}">${metodeAdvarsler.join('<br>')}</div>`
+      ? `<div class="banner ${(!nypris||nypris<=0)||maalenorm==='nedc2'||(market.advarsler||[]).length ? 'thin' : 'ok'}">${metodeAdvarsler.join('<br>')}</div>`
       : '';
   }
 
@@ -1308,6 +1504,7 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
 
 // ---------------- Events ----------------
 document.getElementById('addCompBtn').addEventListener('click', () => { addCompRow(); renderAll(); });
+document.getElementById('addUdstyrBtn').addEventListener('click', () => { addUdstyrRow(); renderAll(); });
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 document.getElementById('shareBtn').addEventListener('click', shareStateLink);
 document.getElementById('autoFetchBtn').addEventListener('click', autoFetch);
