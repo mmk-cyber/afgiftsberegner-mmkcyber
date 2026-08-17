@@ -33,7 +33,7 @@ LAST_PROCESSED_FILE = "data/last_processed.txt"
 
 NS = "{http://skat.dk/dmr/2007/05/31/}"
 
-TEST_LIMIT = int(os.environ.get("TEST_LIMIT", "0")) or None
+TEST_LIMIT = int(os.environ.get("TEST_LIMIT") or 0) or None
 FORCE_RUN = os.environ.get("FORCE_RUN", "") in ("1", "true", "True")
 
 def connect():
