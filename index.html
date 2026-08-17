@@ -274,7 +274,14 @@
     <div class="meta" id="reportDate"></div>
   </header>
 
-  <div class="card">
+  <!-- "Automatisk opslag"-boksen er SKJULT (display:none), fundet i praksis (august 2026): Render-
+       backend'en er sat på pause (suspenderet manuelt af Marco) efter gentagne stabilitets- og
+       hastighedsproblemer på gratis-planens 0.1 CPU (15-25+ min ventetider selv efter forsøg på
+       optimering). Værktøjets manuelle felter herunder ("Køretøj") har ALDRIG krævet denne backend
+       og virker uændret — arbejdsgangen er nu igen: indsæt bilens data/link i chatten, så finder
+       Claude selv sammenligninger manuelt via browseren og udfylder felterne. For at genaktivere
+       boksen (hvis Render-servicen genoptages senere): fjern style="display:none" nedenfor. -->
+  <div class="card" style="display:none;">
     <h2>Automatisk opslag <span class="footnote" style="font-weight:400;">(valgfrit, kræver backend)</span></h2>
     <p class="sub">Enten: indsæt et link til annoncen (fx mobile.de) — ELLER: udfyld mærke, model/variant, km-stand og årgang herunder. Er linkfeltet udfyldt, bruges det; ellers bruges felterne. Henter og udfylder resten automatisk — tjek altid resultatet, det er et udgangspunkt, ikke et facit.</p>
     <div class="field" style="margin-bottom:14px;">
