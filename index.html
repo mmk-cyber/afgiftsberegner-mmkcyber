@@ -1034,17 +1034,30 @@ async function eeaCo2Lookup(maerke, model, aar, fuelKode, fuelVis){
   const y1 = (aar || new Date().getFullYear()) + 1;
   const tok = eeaModelToken(model);
 
-  let sql =
-    'SELECT [MS],[Mk],[Cn],[Ft],[Ec (cm3)] AS ccm,[Ep (KW)] AS kw,[M (kg)] AS mkg,' +
-    '[Enedc (g/km)] AS enedc,[Ewltp (g/km)] AS ewltp,[Year] AS aar, COUNT(*) AS n ' +
-    'FROM ' + EEA_TABLE + " WHERE UPPER([Mk]) LIKE '%" + eeaEscape(mk) + "%'" +
-    ' AND [Year] BETWEEN ' + y0 + ' AND ' + y1 +
-    eeaFuelWhere(fuelKode, fuelVis);
-  if(tok) sql += " AND [Cn] LIKE '%" + eeaEscape(tok) + "%'";
-  sql += ' GROUP BY [MS],[Mk],[Cn],[Ft],[Ec (cm3)],[Ep (KW)],[M (kg)],' +
-         '[Enedc (g/km)],[Ewltp (g/km)],[Year] ORDER BY COUNT(*) DESC';
+  // Bemaerk om API'et: discodata afviser "ORDER BY COUNT(*)" — der SKAL sorteres paa aliasset,
+  // og svaret er haardt begraenset til nrOfHits raekker. Derfor spoerges DK FOERST i en egen
+  // forespoergsel: danske registreringer er faa og ville ellers falde ud af de 250 stoerste
+  // grupper, som domineres af DE. Danske tal foretraekkes, fordi det er dem Motorstyrelsen ser.
+  const byg = kunDK => {
+    let q = 'SELECT [MS],[Mk],[Cn],[Ft],[Ec (cm3)] AS ccm,[Ep (KW)] AS kw,[M (kg)] AS mkg,' +
+      '[Enedc (g/km)] AS enedc,[Ewltp (g/km)] AS ewltp,[Year] AS aar, COUNT(*) AS n ' +
+      'FROM ' + EEA_TABLE + " WHERE UPPER([Mk]) LIKE '%" + eeaEscape(mk) + "%'" +
+      ' AND [Year] BETWEEN ' + y0 + ' AND ' + y1 +
+      eeaFuelWhere(fuelKode, fuelVis);
+    if(kunDK) q += " AND [MS] = 'DK'";
+    if(tok)   q += " AND [Cn] LIKE '%" + eeaEscape(tok) + "%'";
+    q += ' GROUP BY [MS],[Mk],[Cn],[Ft],[Ec (cm3)],[Ep (KW)],[M (kg)],' +
+         '[Enedc (g/km)],[Ewltp (g/km)],[Year] ORDER BY n DESC';
+    return q;
+  };
 
-  const rows = await eeaQuery(sql, 250);
+  const harTraef = r => r.some(x => eeaScore(model, x.Cn) > 0);
+  let rows = [];
+  try{ rows = await eeaQuery(byg(true), 250); }catch(e){ rows = []; }
+  if(!harTraef(rows)){
+    const alle = await eeaQuery(byg(false), 250);
+    rows = rows.concat(alle);
+  }
   const scored = rows.map(r => Object.assign({}, r, { score: eeaScore(model, r.Cn) }))
                      .filter(r => r.score > 0)
                      .sort((a,b) => (b.score - a.score) || (b.n - a.n));
