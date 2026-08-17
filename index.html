@@ -192,6 +192,20 @@
      bilopslag.nu-skridtet over, bare fordi Bilbasen+DBA "giver et resultat". Tjek altid at der
      er MINDST 3, ellers søg videre der.
 
+     VIGTIGT — METODEFORSKEL (Marco påpegede dette, gør det ALTID tydeligt for brugeren):
+     Bilbasen/DBA-priser er RIGTIGE markedsannoncer (uafhængige udbudspriser på biler til
+     salg lige nu). Bilopslag.nu's "Registreringsafgift"-sektion er noget andet: det er
+     Motorstyrelsens/leasingselskabernes egne HISTORISKE §3b-"Nyberegninger" — altså tidligere
+     AFGIFTSBEREGNINGER, ikke uafhængige markedsobservationer. Det er i praksis cirkulært at
+     bruge dem 1:1 som grundlag for en ny beregning. SKAT's egen Juridiske Vejledning
+     (I.A.1.5.3.1.2, info.skat.dk/data.aspx?oid=1947427) forudsætter eksplicit "annoncer" til
+     at understøtte handelsprisen (mindst 3, gerne 5+) — bilopslag.nu-tal er en svagere proxy,
+     kun at foretrække når rigtige annoncer reelt ikke findes (fx sjældne/gamle biler — SKAT's
+     egen undtagelse for "helt specielle køretøjer, hvor sammenligningsgrundlaget er meget
+     sparsomt"). Værktøjet flager nu automatisk i UI'en (banner + sub-tekst), når bilopslag.nu
+     indgår i grundlaget — fjern ALDRIG denne advarsel, og nævn altid forskellen eksplicit for
+     brugeren i chatten, når bilopslag.nu bruges, i stedet for bare at kalde det "5 sammenligninger".
+
   KRAV TIL SAMMENLIGNINGERNE:
   - Minimum 3, helst 5 eller flere.
   - SAMME karosseri/type som brugerens bil hver gang (fx kun stationcar, hvis brugerens bil er
@@ -205,7 +219,7 @@
   - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
     eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
     godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
-  - VIGTIGT, LÆRT AF FEJL I PRAKSIS: Bilbasens/DBA's søgeresultat-KORT viser ikke altid
+  - VIGTIGT, LÆET AF FEJL I PRAKSIS: Bilbasens/DBA's søgeresultat-KORT viser ikke altid
     pålideligt en "(Uden afgift)"/"(Engros/CVR)"-markering, selvom annoncen rent faktisk er
     det — teksten står nogle gange kun i selve annoncens BESKRIVELSE (fx "INCL. moms/Uden
     afgift." eller "Sælges engros til CVR-nummer uden reklamationsret"), ikke i søgeresultat-
@@ -362,7 +376,7 @@
 
   <div class="card">
     <h2 id="comparisonsHeading">Sammenligningsgrundlag — danske biler</h2>
-    <p class="sub">Danske referencer, fundet på Bilbasen/DBA (salgsannoncer) eller bilopslag.nu (allerede afgiftsberegnede biler). Alle priser her er <strong>totalpriser inkl. moms og afgift</strong> — værktøjet tilbageregner selv den afgiftspligtige værdi.</p>
+    <p class="sub">Danske referencer, fundet på Bilbasen/DBA (rigtige salgsannoncer) eller bilopslag.nu (Motorstyrelsens/leasingselskabernes egne tidligere §3b-genberegninger — IKKE uafhængige annoncer, se advarsel nedenfor når bilopslag.nu bruges). Alle priser her er <strong>totalpriser inkl. moms og afgift</strong> — værktøjet tilbageregner selv den afgiftspligtige værdi.</p>
     <p class="footnote" style="margin:-8px 0 16px;">Fast metode: søg først Bilbasen + DBA efter totalpriser (ikke "Uden afgift"/engros); brug kun bilopslag.nu som backup, hvis for få gode matches findes der. Samme karosseri hver gang, minimum 3, helst 5+, tættest på årgang/km. Se HTML-kildekoden (øverste kommentar) for fulde instruktioner — en ny Claude-samtale kan læse dem direkte derfra.</p>
     <div class="table-scroll">
     <table class="comp">
@@ -579,7 +593,7 @@ async function autoFetch(){
       // browser-fane ikke poller for evigt), men rammer nu sjældnere en søgning der reelt var på
       // vej til at blive færdig.
       if(elapsedSec > 1500){
-        throw new Error('Søgningen tog for lang tid (over 25 minutter) — prøv igen, eller udfyld manuelt.');
+        throw new Error('Søgningen tok for lang tid (over 25 minutter) — prøv igen, eller udfyld manuelt.');
       }
       let job;
       try{
@@ -925,7 +939,7 @@ function shareStateLink(){
   }
 }
 
-function renderConfidenceBanner(market, count){
+function renderConfidenceBanner(market, count, comparisons){
   const el = document.getElementById('confidenceBanner');
   const notes = document.getElementById('basisNote');
   if(count === 0){
@@ -933,13 +947,17 @@ function renderConfidenceBanner(market, count){
     notes.textContent = 'Tilføj mindst én sammenligning for at beregne en dansk markedsværdi.';
     return;
   }
+  const bilopslagCount = (comparisons || []).filter(c => c.kilde === 'bilopslag.nu').length;
+  const bilopslagNote = bilopslagCount > 0
+    ? ` <strong>OBS:</strong> ${bilopslagCount} af ${count} er bilopslag.nu-baserede — det er Motorstyrelsens/leasingselskabernes egne tidligere §3b-genberegninger (“Nyberegning”), IKKE uafhængige salgsannoncer som Bilbasen/DBA. SKAT's egen vejledning (Den Juridiske Vejledning I.A.1.5.3.1.2) forudsætter primært “annoncer” til at understøtte handelsprisen; bilopslag.nu-tal er en svagere, men ofte eneste, proxy for sjældne/gamle biler.`
+    : '';
   const msgs = {
-    thin: `<div class="banner thin"><strong>${count} sammenligning${count===1?'':'er'} — for tyndt grundlag.</strong> Der kræves minimum 3 sammenligninger (Bilbasen+DBA, eller bilopslag.nu som backup hvis der ikke er nok der) for at kunne beregne pålideligt. Find flere sammenligninger før du bruger resultatet.</div>`,
-    mild: `<div class="banner mild"><strong>${count} sammenligninger — brugbart, men stadig et tyndt grundlag.</strong>${market.excludedNote ? ' ' + market.excludedNote : ''} Flere referencer (helst 5+) vil gøre estimatet mere robust.</div>`,
-    ok: `<div class="banner ok"><strong>${count} sammenligninger — rimeligt grundlag.</strong>${market.excludedNote ? ' ' + market.excludedNote : ''}</div>`,
+    thin: `<div class="banner thin"><strong>${count} sammenligning${count===1?'':'er'} — for tyndt grundlag.</strong> Der kræves minimum 3 sammenligninger (Bilbasen+DBA, eller bilopslag.nu som backup hvis der ikke er nok der) for at kunne beregne pålideligt. Find flere sammenligninger før du bruger resultatet.${bilopslagNote}</div>`,
+    mild: `<div class="banner mild"><strong>${count} sammenligninger — brugbart, men stadig et tyndt grundlag.</strong>${market.excludedNote ? ' ' + market.excludedNote : ''} Flere referencer (helst 5+) vil gøre estimatet mere robust.${bilopslagNote}</div>`,
+    ok: `<div class="banner ok"><strong>${count} sammenligninger — rimeligt grundlag.</strong>${market.excludedNote ? ' ' + market.excludedNote : ''}${bilopslagNote}</div>`,
   };
   el.innerHTML = msgs[market.tier] || '';
-  notes.textContent = `Gennemsnitlig totalpris (inkl. afgift) blandt de anvendte annoncer: ${fmt(market.totalIncl)}. Denne værdi tilbageregnes til den afgiftspligtige værdi nedenfor.`;
+  notes.textContent = `Gennemsnitlig totalpris (inkl. afgift) blandt de anvendte sammenligninger: ${fmt(market.totalIncl)}. Denne værdi tilbageregnes til den afgiftspligtige værdi nedenfor.`;
 }
 
 // ---------------- Render ----------------
@@ -949,7 +967,7 @@ function renderAll(){
 
   const comparisons = getComparisons();
   const market = deriveMarketValue(comparisons);
-  renderConfidenceBanner(market, comparisons.length); const withAndel = comparisons.filter(c => c.andelPct > 0); const afgiftAndelEl = document.getElementById('afgiftAndelNote'); if(withAndel.length > 0){ const avgAndel = withAndel.reduce((s,c)=>s+c.andelPct,0)/withAndel.length; const minA = Math.min(...withAndel.map(c=>c.andelPct)); const maxA = Math.max(...withAndel.map(c=>c.andelPct)); afgiftAndelEl.textContent = `Til sammenligning: sammenligningsbilernes seneste §3b-opkrævninger lå på ${avgAndel.toFixed(1)}% i snit (spænd ${minA.toFixed(1)}-${maxA.toFixed(1)}%) af den daværende restafgift, jf. bilopslag.nu. Perioderne varierer i længde, så tallet er kun en grov sanity-check af §3b-satsen nedenfor og indgår ikke i selve beregningen.`; } else if(afgiftAndelEl){ afgiftAndelEl.textContent = ''; }
+  renderConfidenceBanner(market, comparisons.length, comparisons); const withAndel = comparisons.filter(c => c.andelPct > 0); const afgiftAndelEl = document.getElementById('afgiftAndelNote'); if(withAndel.length > 0){ const avgAndel = withAndel.reduce((s,c)=>s+c.andelPct,0)/withAndel.length; const minA = Math.min(...withAndel.map(c=>c.andelPct)); const maxA = Math.max(...withAndel.map(c=>c.andelPct)); afgiftAndelEl.textContent = `Til sammenligning: sammenligningsbilernes seneste §3b-opkrævninger lå på ${avgAndel.toFixed(1)}% i snit (spænd ${minA.toFixed(1)}-${maxA.toFixed(1)}%) af den daværende restafgift, jf. bilopslag.nu. Perioderne varierer i længde, så tallet er kun en grov sanity-check af §3b-satsen nedenfor og indgår ikke i selve beregningen.`; } else if(afgiftAndelEl){ afgiftAndelEl.textContent = ''; }
 
   const exAfgiftValue = market.totalIncl > 0 ? solveExAfgiftValue(market.totalIncl, co2, fuel) : 0;
 
