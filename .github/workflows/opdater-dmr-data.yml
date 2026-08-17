@@ -2,8 +2,8 @@ name: Opdater DMR koeretoejsdata
 
 on:
   schedule:
-    # Hver mandag kl. 08:00 UTC (10:00 dansk sommertid / 09:00 vintertid)
-    - cron: '0 8 * * 1'
+    # MIDLERTIDIGT: kl. 10:44 UTC i dag, til test af automatisk trigger
+    - cron: '44 10 * * *'
   workflow_dispatch:
     inputs:
       test_limit:
