@@ -593,27 +593,8 @@
         <input type="number" id="months" value="12" min="1">
       </div>
       <div class="field">
-        <label for="downpct">Udbetaling (%)</label>
-        <input type="number" id="downpct" value="10" min="0" max="100">
-      </div>
-      <div class="field">
-        <label for="rate">Rente på bilfinansiering (markedsrente, %/år)</label>
-        <input type="number" id="rate" value="6" min="0" step="0.1">
-      </div>
-      <div class="field">
         <label for="restRente">Rentetillæg på restafgift — Skats sats (%/år)</label>
         <input type="number" id="restRente" value="3.8" min="0" step="0.1">
-      </div>
-    </div>
-    <p class="footnote" style="margin:8px 0 0;">To forskellige renter, med vilje: <strong>bilfinansiering</strong> er en almindelig markedsrente for lånet til bilens ekskl.-afgift-værdi. <strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
-    <div class="grid grid-4" style="margin-top:16px;">
-      <div class="field">
-        <label for="restManuel">Restværdi, manuel (kr. inkl. moms)</label>
-        <input type="number" id="restManuel" value="0" min="0" step="1000" placeholder="0 = beregn selv" title="Overstyrer den beregnede restværdi. 0 betyder at værktøjet selv beregner.">
-      </div>
-      <div class="field">
-        <label for="vaerditabPct">…eller værditab (%)</label>
-        <input type="number" id="vaerditabPct" value="0" min="0" max="100" step="0.5" placeholder="0 = beregn selv" title="Værditab i procent af bilens værdi. Bruges kun hvis restværdi-feltet er 0.">
       </div>
       <div class="field">
         <label for="foersteYdelsePct">Førstegangsydelse (% af bilens værdi)</label>
@@ -624,14 +605,15 @@
         <input type="number" id="foersteYdelseKr" value="0" min="0" step="1000" placeholder="0 = brug procenten">
       </div>
     </div>
-    <div class="grid grid-2" style="margin-top:12px;">
+    <p class="footnote" style="margin:8px 0 0;"><strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
+    <div class="grid grid-2" style="margin-top:16px;">
+      <div class="field">
+        <label for="restManuel">Restværdi ved periodens udløb (kr. inkl. moms) — slås op på markedet</label>
+        <input type="number" id="restManuel" value="0" min="0" step="1000" placeholder="0 = beregn selv" title="Markedsprisen for en tilsvarende bil på det tidspunkt, leasingperioden udløber. Overstyrer værktøjets egen beregning. 0 betyder at værktøjet beregner selv.">
+      </div>
       <div class="field">
         <label for="avancePct">Leasingselskabets avance (%)</label>
         <input type="number" id="avancePct" value="0" min="0" max="100" step="0.5" title="Lægges oven på kostprisen (værditab + afgift + rente).">
-      </div>
-      <div class="field">
-        <label for="markedsYdelse">Markedets ydelse pr. md. inkl. moms (kr.) — viser den underforståede avance</label>
-        <input type="number" id="markedsYdelse" value="0" min="0" step="100" placeholder="0 = spring over">
       </div>
     </div>
     <div style="margin-top:14px;">
@@ -687,7 +669,6 @@
     <div class="result-card">
       <h3>Flexleasing (§3b, forholdsmæssig afgift)</h3>
       <div class="big" id="leaseTotal">0 kr./md.</div>
-      <div class="line" style="opacity:.7;"><span>Bilfinansiering (til orientering, indgår ikke i ydelsen)</span><span id="lCarMonthly">–</span></div>
       <div class="line"><span>Afgift/rente, gnsn. pr. md. (ekskl. moms)</span><span id="lAfgiftMonthly">–</span></div>
       <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;opacity:.65;font-size:12.5px;">
         <span></span><span style="text-align:right;">Ekskl. moms</span><span style="text-align:right;">Inkl. moms</span></div>
@@ -705,7 +686,6 @@
         <span>Avance</span><span id="lAvance" style="text-align:right;">–</span><span id="lAvanceIncl" style="text-align:right;">–</span></div>
       <div class="line total" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
         <span>Totale omkostninger i perioden</span><span id="lTotalCostExcl" style="text-align:right;">–</span><span id="lTotalCostIncl" style="text-align:right;">–</span></div>
-      <div class="line" id="impliedRow" style="display:none;"><span>Markedsprisen svarer til en avance på</span><span id="lImpliedAvance">–</span></div>
       <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
     </div>
   </div>
@@ -788,8 +768,8 @@ async function autoFetch(){
       ? { input: link }
       : { input: '', maerke, model, km: km ? parseFloat(km) : null, year, month };
     body.months = parseFloat(document.getElementById('months').value)||12;
-    body.downpct = parseFloat(document.getElementById('downpct').value)||10;
-    body.rate = parseFloat(document.getElementById('rate').value)||6;
+    body.downpct = 0;
+    body.rate = 0;
     body.restRente = parseFloat(document.getElementById('restRente').value)||3.8;
 
     // POLLING I STEDET FOR ÉT LANGT FETCH-KALD, tilføjet efter gentagne fund i praksis: en fuld
@@ -1631,8 +1611,6 @@ function serializeState(){
     stand: (document.getElementById('stand')||{}).value || 'middel',
     saerligAnvendelse: (document.getElementById('saerligAnvendelse')||{}).value || 'nej',
     months: document.getElementById('months').value,
-    downpct: document.getElementById('downpct').value,
-    rate: document.getElementById('rate').value,
     restRente: document.getElementById('restRente').value,
     comps,
     udstyr: Array.from(document.querySelectorAll('#udstyrBody tr')).map(tr => ({
@@ -1667,8 +1645,6 @@ function applyState(state){
   _set('stand', state.stand || 'middel');
   _set('saerligAnvendelse', state.saerligAnvendelse || 'nej');
   document.getElementById('months').value = state.months || '12';
-  document.getElementById('downpct').value = state.downpct || '10';
-  document.getElementById('rate').value = state.rate || '6';
   document.getElementById('restRente').value = state.restRente || '3.8';
   setFuelByDisplay(state.fuelDisplay || 'Benzin');
 
@@ -1837,28 +1813,20 @@ function renderAll(){
 
   // Leasing
   const months = parseFloat(document.getElementById('months').value) || 1;
-  const downPct = parseFloat(document.getElementById('downpct').value) || 0;
-  const rate = parseFloat(document.getElementById('rate').value) || 0;
   const restRente = parseFloat(document.getElementById('restRente').value) || 0;
   const kmStand = parseFloat(document.getElementById('kmStand').value) || 0;
   const futureKm = ageMonths > 0 ? kmStand + (kmStand/ageMonths)*months : kmStand;
   const residualInfo = deriveResidualValueCombined(comparisons, futureKm, exAfgiftValue, ageMonths, months);
-  // MANUEL RESTVAERDI. Et konkret tilbud fra et leasingselskab slaar altid en model.
-  // Prioritet: 1) restvaerdi i kroner, 2) vaerditab i procent, 3) vaerktoejets egen 3-metode-model.
-  const restManuel   = parseFloat(document.getElementById('restManuel').value) || 0;
-  const vaerditabPct = parseFloat(document.getElementById('vaerditabPct').value) || 0;
+  // MANUEL RESTVAERDI. Et konkret markedsopslag slaar altid en model: restvaerdien er
+  // markedsprisen for en tilsvarende bil paa det tidspunkt, leasingperioden udloeber.
+  // Prioritet: 1) manuelt indtastet restvaerdi, 2) vaerktoejets egen 3-metode-model.
+  const restManuel = parseFloat(document.getElementById('restManuel').value) || 0;
   let residual = residualInfo.value, restKilde = 'beregnet';
-  if(restManuel > 0){ residual = restManuel; restKilde = 'manuel restværdi'; }
-  else if(vaerditabPct > 0 && exAfgiftValue > 0){ residual = exAfgiftValue * (1 - vaerditabPct/100); restKilde = 'manuelt værditab ' + vaerditabPct + ' %'; }
+  if(restManuel > 0){ residual = restManuel; restKilde = 'markedsopslag'; }
 
-  const udbetaling = exAfgiftValue * (downPct/100);
-  const financed = exAfgiftValue - udbetaling;
-  const residualTooHigh = residual > financed;
-  const carMonthly = residualTooHigh ? 0 : annuityWithBalloon(financed, residual, rate, months);
   const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente);
   const totalMonthly = fm.avgMonthly;
 
-  document.getElementById('lCarMonthly').textContent = fmt(carMonthly);
   document.getElementById('lAfgiftMonthly').textContent = fmt(fm.avgMonthly);
   document.getElementById('lResidual').textContent = fmt(residual / 1.25);
 document.getElementById('lResidualIncl').textContent = fmt(residual);
@@ -1932,17 +1900,6 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   document.getElementById('lTotalCostExcl').textContent = fmt(totalCostExcl);
   document.getElementById('lTotalCostIncl').textContent = fmt(totalCostExcl * 1.25);
 
-  // BAGLAENS: kender man markedets ydelse, kan man aflaese hvilken avance den svarer til.
-  // Det er det tal, der afgoer om et tilbud er skarpt eller ej.
-  const marked = parseFloat(document.getElementById('markedsYdelse').value) || 0;
-  const impRow = document.getElementById('impliedRow');
-  if(marked > 0 && kostprisExcl > 0){
-    const markedTotalExcl = (marked/1.25) * months + foersteExcl;
-    const impPct = (markedTotalExcl / kostprisExcl - 1) * 100;
-    impRow.style.display = '';
-    document.getElementById('lImpliedAvance').textContent =
-      impPct.toFixed(1) + ' % (' + fmt(markedTotalExcl - kostprisExcl) + ' over kostpris)';
-  } else if(impRow){ impRow.style.display = 'none'; }
   document.getElementById('leaseTotal').textContent = fmt(nyMaanedlig * 1.25) + '/md. (inkl. moms)';
 
   const sl = document.getElementById('sliderLabel');
@@ -2132,7 +2089,7 @@ function eeaAutoOpslag(){
     kr.value = 0; renderAll();
   });
   kr.addEventListener('input', renderAll);
-  ['restManuel','vaerditabPct','avancePct','markedsYdelse'].forEach(id => {
+  ['restManuel','avancePct'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('input', renderAll);
   });
@@ -2152,7 +2109,7 @@ document.querySelectorAll('#fuelSeg button').forEach(btn=>{
   });
 });
 
-['co2','ageMonths','kmStand','months','downpct','rate','restRente','nypris'].forEach(id=>{
+['co2','ageMonths','kmStand','months','restRente','nypris'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderAll);
 });
 ['maalenorm','stand','saerligAnvendelse'].forEach(id=>{
