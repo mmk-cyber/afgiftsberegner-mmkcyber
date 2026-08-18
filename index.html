@@ -608,8 +608,8 @@
     <p class="footnote" style="margin:8px 0 0;"><strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
     <div class="grid grid-2" style="margin-top:16px;">
       <div class="field">
-        <label for="restManuel">Restværdi ved periodens udløb (kr. inkl. moms) — slås op på markedet</label>
-        <input type="number" id="restManuel" value="0" min="0" step="1000" placeholder="0 = beregn selv" title="Markedsprisen for en tilsvarende bil på det tidspunkt, leasingperioden udløber. Overstyrer værktøjets egen beregning. 0 betyder at værktøjet beregner selv.">
+        <label for="restManuel">Restværdi ved udløb (kr. ekskl. moms og afgift) — fra annoncer uden afgift</label>
+        <input type="number" id="restManuel" value="0" min="0" step="1000" placeholder="0 = beregn selv" title="Prisen på en tilsvarende bil ved periodens udløb, som den handles uden registreringsafgift og uden moms — dvs. annoncer mærket «Uden afgift». Overstyrer værktøjets egen beregning. 0 betyder at værktøjet beregner selv.">
       </div>
       <div class="field">
         <label for="avancePct">Leasingselskabets avance (%)</label>
@@ -673,8 +673,6 @@
       <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;opacity:.65;font-size:12.5px;">
         <span></span><span style="text-align:right;">Ekskl. moms</span><span style="text-align:right;">Inkl. moms</span></div>
       <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Restværdi ved periodens udløb</span><span id="lResidual" style="text-align:right;">–</span><span id="lResidualIncl" style="text-align:right;">–</span></div>
-      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
         <span>Værditab i leasingperioden</span><span id="lValueLoss" style="text-align:right;">–</span><span id="lValueLossIncl" style="text-align:right;">–</span></div>
       <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
         <span>Førstegangsydelse</span><span id="lFoersteExcl" style="text-align:right;">–</span><span id="lFoersteIncl" style="text-align:right;">–</span></div>
@@ -686,6 +684,8 @@
         <span>Avance</span><span id="lAvance" style="text-align:right;">–</span><span id="lAvanceIncl" style="text-align:right;">–</span></div>
       <div class="line total" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
         <span>Totale omkostninger i perioden</span><span id="lTotalCostExcl" style="text-align:right;">–</span><span id="lTotalCostIncl" style="text-align:right;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Restværdi ved periodens udløb</span><span id="lResidual" style="text-align:right;">–</span><span id="lResidualIncl" style="text-align:right;">–</span></div>
       <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
     </div>
   </div>
@@ -1820,15 +1820,16 @@ function renderAll(){
   // MANUEL RESTVAERDI. Et konkret markedsopslag slaar altid en model: restvaerdien er
   // markedsprisen for en tilsvarende bil paa det tidspunkt, leasingperioden udloeber.
   // Prioritet: 1) manuelt indtastet restvaerdi, 2) vaerktoejets egen 3-metode-model.
-  // Markedsprisen er INKL. registreringsafgift, mens vaerditabet skal regnes paa vaerdien UDEN
-  // afgift: i flexleasing betales afgiften saerskilt og forholdsmaessigt efter §3b, saa
-  // leasingselskabets kapital er bundet i ex-afgift-vaerdien. Uden denne omregning
-  // sammenlignes en pris inkl. afgift med et grundlag uden afgift, og vaerditabet bliver negativt.
+  // Restvaerdien tastes ind som den handles mellem forhandlere: UDEN registreringsafgift og
+  // UDEN moms — det er de annoncer, der er maerket "Uden afgift". Internt regnes der i samme
+  // enhed som den afgiftspligtige vaerdi, altsaa inkl. moms men uden afgift, saa der ganges
+  // med 1,25. Uden det ville et tal ekskl. moms blive sammenlignet med et grundlag inkl. moms
+  // og give et vaerditab, der er 25 % for stort.
   const restManuel = parseFloat(document.getElementById('restManuel').value) || 0;
   let residual = residualInfo.value, restKilde = 'beregnet';
   if(restManuel > 0){
-    residual = solveExAfgiftValue(restManuel, co2Eff, fuel, scale);
-    restKilde = 'markedsopslag ' + fmt(restManuel) + ' inkl. afgift';
+    residual = restManuel * 1.25;
+    restKilde = 'annoncer uden afgift, ' + fmt(restManuel) + ' ekskl. moms';
   }
 
   const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente);
