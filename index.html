@@ -514,8 +514,8 @@
       </div>
     </div>
     <div style="margin:12px 0 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <button class="addbtn no-print" id="eeaCo2Btn" type="button" style="margin-top:0;">Slå CO2 op i EU's måledatabase (EEA)</button>
-      <button class="addbtn no-print" id="co2LookupBtn" type="button" style="margin-top:0;">Slå dansk CO2-tal op i Motorregistret</button>
+      <button class="addbtn no-print" id="eeaCo2Btn" type="button" style="margin-top:0;display:none;">CO2-opslag</button>
+      <button class="addbtn no-print" id="co2LookupBtn" type="button" style="margin-top:0;display:none;">Motorregistret</button>
       <span class="footnote" id="co2LookupNote" style="margin:0;flex:1;min-width:280px;"></span>
     </div>
     <div id="eeaCo2Result" class="no-print" style="display:none;margin:10px 0 0;"></div>
@@ -530,7 +530,7 @@
   <div class="card">
     <h2 id="comparisonsHeading">Sammenligningsgrundlag — danske biler</h2>
     <p class="sub">Danske referencer, fundet på Bilbasen/DBA (rigtige salgsannoncer) eller bilopslag.nu (Motorstyrelsens/leasingselskabernes egne tidligere §3b-genberegninger — IKKE uafhængige annoncer, se advarsel nedenfor når bilopslag.nu bruges). Alle priser her er <strong>totalpriser inkl. moms og afgift</strong> — værktøjet tilbageregner selv den afgiftspligtige værdi.</p>
-    <p class="footnote" style="margin:-8px 0 16px;">Fast metode: søg først Bilbasen + DBA efter totalpriser (ikke "Uden afgift"/engros); brug <strong>altid</strong> bilopslag.nu som supplement, hvis Bilbasen+DBA giver 5 eller færre. Samme karosseri hver gang, minimum 3, helst 5+, tættest på årgang/km. Undgå annoncer med over 90 liggedage. Værktøjet trækker selv de 5 % annoncefradrag og regulerer for km efter Motorstyrelsens satser. Se HTML-kildekoden (øverste kommentar) for fulde instruktioner — en ny Claude-samtale kan læse dem direkte derfra.</p>
+    <p class="footnote" style="margin:-8px 0 16px;">Fast metode: søg først Bilbasen + DBA efter totalpriser (ikke "Uden afgift"/engros); slå derefter <strong>altid</strong> hver kandidat op på bilopslag.nu — uden undtagelse, også når Bilbasen+DBA giver rigeligt — og udfyld Effekt, Værdi u. afgift, Registreringsafgift, Opkrævet afgift og Andel. <strong>Kun biler med samme effekt (kW/hk) må indgå</strong>; en anden motorvariant er en anden bil. Samme karosseri hver gang, minimum 3, helst 5+, tættest på årgang/km. Undgå annoncer med over 90 liggedage. Værktøjet trækker selv de 5 % annoncefradrag og regulerer for km efter Motorstyrelsens satser. Se HTML-kildekoden (øverste kommentar) for fulde instruktioner — en ny Claude-samtale kan læse dem direkte derfra.</p>
     <div class="table-scroll">
     <table class="comp">
       <thead>
@@ -543,6 +543,7 @@
           <th class="col-liggedage">Liggetid (dage)</th>
           <th class="col-dato">Dato</th>
           <th class="col-km">Km</th>
+          <th class="col-kw">kW</th>
           <th class="col-vuafgift">Værdi u. afgift</th><th class="col-regafgift">Registreringsafgift</th><th class="col-opkraevet">Opkrævet afgift (kr.)</th><th class="col-andel">Andel (%)</th>
           <th class="col-link">Link</th>
           <th class="col-remove"></th>
@@ -1283,7 +1284,7 @@ function annuityWithBalloon(P, B, annualRatePct, n){
 
 // ---------------- Sammenligningstabel ----------------
 let compRowId = 0;
-function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, regafgift, opkraevet, andelPct, annoncetype, regUdgifter, liggedage){
+function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, regafgift, opkraevet, andelPct, annoncetype, regUdgifter, liggedage, kwComp){
   const id = 'c'+(compRowId++);
   const tr = document.createElement('tr');
   tr.dataset.rowId = id;
@@ -1305,6 +1306,7 @@ function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, reg
     <td><input type="number" class="c-liggedage" value="${liggedage||''}" step="1" min="0" placeholder="dage"></td>
     <td><input type="text" class="c-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="c-km" value="${km||''}" step="1000" min="0"></td>
+    <td><input type="number" class="c-kw" value="${kwComp||''}" step="1" min="0" placeholder="kW" title="Annoncebilens motoreffekt i kW — hentes på bilopslag.nu. Kun samme effekt som sagens bil må indgå."></td>
     <td><input type="number" class="c-vaerdiuafgift" value="${vaerdiUAfgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-regafgift" value="${regafgift||''}" step="1000" min="0" placeholder="fra bilopslag.nu"></td><td><input type="number" class="c-opkraevet" value="${opkraevet||''}" step="100" min="0" placeholder="opkrævet afgift"></td><td><input type="number" class="c-andel" value="${andelPct||''}" step="0.1" min="0" placeholder="%"></td>
     <td><div style="display:flex;gap:4px;align-items:center;"><input type="url" class="c-link" value="${link||''}" placeholder="link" style="flex:1;min-width:60px;"><button type="button" class="linkbtn no-print" title="Åbn link" onclick="const u=this.previousElementSibling.value; if(u) window.open(u,'_blank');">↗</button></div></td>
     <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
@@ -1360,6 +1362,7 @@ function getComparisons(){
     liggedage: parseFloat((tr.querySelector('.c-liggedage')||{}).value) || 0,
     dato: tr.querySelector('.c-dato').value,
     km: parseFloat(tr.querySelector('.c-km').value) || 0,
+    kwComp: parseFloat((tr.querySelector('.c-kw')||{}).value) || 0,
     vaerdiUAfgift: parseFloat(tr.querySelector('.c-vaerdiuafgift').value) || 0, regafgift: parseFloat(tr.querySelector('.c-regafgift').value) || 0, opkraevet: parseFloat(tr.querySelector('.c-opkraevet').value) || 0, andelPct: parseFloat(tr.querySelector('.c-andel').value) || 0,
     link: tr.querySelector('.c-link').value,
   })).filter(c => c.pris > 0);
@@ -1396,6 +1399,20 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   // Annoncetype: engros skal som klar hovedregel ikke indgaa.
   const engros = adj.filter(c => c.annoncetype === 'engros');
   if(engros.length) advarsler.push(`${engros.length} engrosannonce(r) indgaar. Motorstyrelsen: engrosannoncer skal som klar hovedregel IKKE bruges — kun helt undtagelsesvist, og foerst efter en bredere soegning.`);
+  // SAMME MOTOREFFEKT. En anden effektvariant er en anden bil: den har anden nypris, andet
+  // CO2-tal og et andet marked. Blander man dem, bliver handelsprisniveauet et gennemsnit
+  // af to forskellige biler. Derfor advares der, saa snart en annonce afviger mere end 5 kW.
+  const bilKw = parseFloat((document.getElementById('effektKw')||{}).value) || 0;
+  if(bilKw > 0){
+    const afvig = adj.filter(c => c.kwComp > 0 && Math.abs(c.kwComp - bilKw) > 5);
+    if(afvig.length) advarsler.push(`${afvig.length} annonce(r) har en anden motoreffekt end sagens bil (${bilKw} kW): ` +
+      afvig.map(c => c.kwComp + ' kW').join(', ') + '. Kun samme effektvariant maa indgaa — fjern dem, eller regulér for forskellen i nypris.');
+  }
+  const udenKw = adj.filter(c => !c.kwComp);
+  if(udenKw.length) advarsler.push(`${udenKw.length} annonce(r) mangler kW. Slå bilen op på bilopslag.nu og udfyld effekten — ellers kan det ikke dokumenteres, at det er samme motorvariant.`);
+  const udenBilopslag = adj.filter(c => !c.vaerdiUAfgift);
+  if(udenBilopslag.length) advarsler.push(`${udenBilopslag.length} annonce(r) mangler «Værdi u. afgift» fra bilopslag.nu. Slå hver kandidat op dér og udfyld værdi, registreringsafgift, opkrævet afgift og andel — restværdiberegningen bruger dem.`);
+
   const privat = adj.filter(c => c.annoncetype === 'privat');
   if(privat.length > adj.length/2) advarsler.push(`Flertallet af annoncerne er privatannoncer. Hovedreglen er forhandlerannoncer; privatannoncer kraever saerlige grunde (fx at bilen overvejende handles privat).`);
   const gamle = adj.filter(c => c.liggedage > RATES.liggetidMaxMdr*30);
@@ -1865,6 +1882,10 @@ function eeaIndsaetCo2(vaerdi, norm, kilde){
   const m = document.getElementById('maalenorm');
   if(m && norm){ m.value = norm; }
   document.getElementById('eeaCo2Result').dataset.kilde = kilde || '';
+  // Skriv kilden i CO2-kilde-feltet, saa den foelger med i print og i delelinket.
+  // Uden en kildeangivelse kan tallet ikke dokumenteres over for Motorstyrelsen.
+  const kEl = document.getElementById('co2Source');
+  if(kEl && kilde) kEl.value = kilde + (norm ? ' — ' + norm.toUpperCase() : '');
   renderAll();
 }
 
@@ -1946,6 +1967,30 @@ async function eeaCo2Opslag(){
   }
 }
 document.getElementById('eeaCo2Btn').addEventListener('click', eeaCo2Opslag);
+
+// CO2-opslaget skal ikke kraeve et klik. Saa snart maerke, model og alder er kendt, slaar
+// vaerktoejet selv op og skriver kilden i feltet "CO2-kilde", saa det altid kan dokumenteres
+// hvor tallet kommer fra. Der slaas kun op, naar CO2-feltet er tomt eller stammer fra et
+// tidligere automatisk opslag — et manuelt indtastet tal (fx fra COC) roeres aldrig.
+let eeaAutoTimer = null, eeaSidsteNoegle = '';
+function eeaAutoOpslag(){
+  const { maerke, model } = eeaMaerkeModel();
+  const alder = parseFloat(document.getElementById('ageMonths').value) || 0;
+  const kw    = parseFloat(document.getElementById('effektKw').value) || 0;
+  if(!maerke || !model || !alder) return;
+  const kilde = (document.getElementById('co2Source').value || '').trim();
+  const co2   = parseFloat(document.getElementById('co2').value) || 0;
+  if(co2 > 0 && !/^EEA/.test(kilde)) return;          // manuelt tal — lad det staa
+  const noegle = [maerke, model, alder, kw, fuel].join('|');
+  if(noegle === eeaSidsteNoegle) return;
+  eeaSidsteNoegle = noegle;
+  clearTimeout(eeaAutoTimer);
+  eeaAutoTimer = setTimeout(() => { eeaCo2Opslag(); }, 700);
+}
+['autoMaerke','autoModel','carName','ageMonths','effektKw'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', eeaAutoOpslag);
+});
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 document.getElementById('shareBtn').addEventListener('click', shareStateLink);
 document.getElementById('autoFetchBtn').addEventListener('click', autoFetch);
