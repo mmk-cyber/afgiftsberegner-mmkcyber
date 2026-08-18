@@ -606,16 +606,40 @@
       </div>
     </div>
     <p class="footnote" style="margin:8px 0 0;"><strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
-    <div class="grid grid-2" style="margin-top:16px;">
+    <div class="grid grid-4" style="margin-top:16px;">
       <div class="field">
-        <label for="restManuel">Restværdi ved udløb (kr. ekskl. moms og afgift) — fra annoncer uden afgift</label>
-        <input type="number" id="restManuel" value="0" min="0" step="1000" placeholder="0 = beregn selv" title="Prisen på en tilsvarende bil ved periodens udløb, som den handles uden registreringsafgift og uden moms — dvs. annoncer mærket «Uden afgift». Overstyrer værktøjets egen beregning. 0 betyder at værktøjet beregner selv.">
+        <label for="kmPrAar">Forventet kørsel (km pr. år)</label>
+        <input type="number" id="kmPrAar" value="20000" min="0" step="1000" title="Bruges til at fremskrive kilometerstanden til periodens udløb. Bilens hidtidige kørsel bruges ikke — leasingaftalen sætter loftet.">
       </div>
       <div class="field">
         <label for="avancePct">Leasingselskabets avance (%)</label>
         <input type="number" id="avancePct" value="0" min="0" max="100" step="0.5" title="Lægges oven på kostprisen (værditab + afgift + rente).">
       </div>
+      <div class="field" style="grid-column:3/-1;">
+        <label for="restManuel">Restværdi, manuel (kr. ekskl. moms og afgift)</label>
+        <input type="number" id="restManuel" value="0" min="0" step="1000" placeholder="0 = brug annoncerne nedenfor" title="Overstyrer restværdien fra annoncetabellen. 0 betyder at værktøjet selv finder restværdien ud fra annoncerne uden afgift.">
+      </div>
     </div>
+
+    <h3 style="margin:20px 0 4px;font-size:15px;">Restværdi — annoncer uden afgift og uden moms</h3>
+    <p class="sub" style="margin-top:0;">Restværdien findes på præcis samme måde som handelsprisen: gennemsnit af sammenlignelige annoncer, reguleret for kilometer. Forskellen er, at priserne her er <strong>uden registreringsafgift og uden moms</strong> — det er sådan biler handles mellem forhandlere, og det er den værdi, leasingselskabets kapital er bundet i. Find dem på Bilbasen under annoncer mærket «Uden afgift». Bilen skal matches på alder og km ved <em>periodens udløb</em>, ikke i dag.</p>
+    <div class="tablewrap">
+    <table id="restTable">
+      <thead><tr>
+        <th style="width:120px;">Kilde</th>
+        <th>Beskrivelse</th>
+        <th style="width:130px;">Pris u. afgift/moms</th>
+        <th style="width:110px;">Årgang</th>
+        <th style="width:110px;">Km</th>
+        <th style="width:100px;">kW</th>
+        <th style="width:120px;">Link</th>
+        <th class="col-remove"></th>
+      </tr></thead>
+      <tbody id="restBody"></tbody>
+    </table>
+    </div>
+    <button class="addbtn no-print" id="addRestBtn" type="button">+ Tilføj restværdi-annonce</button>
+    <div id="restNote" class="footnote" style="margin-top:8px;"></div>
     <div style="margin-top:14px;">
       <label for="foersteYdelseSlider" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">
         Træk for at flytte omkostningen mellem førstegangsydelse og månedlig ydelse — <span id="sliderLabel">20 %</span>
@@ -1395,6 +1419,67 @@ function getComparisons(){
   })).filter(c => c.pris > 0);
 }
 
+// ---------- Restvaerdi ud fra annoncer uden afgift og uden moms ----------
+// Samme fremgangsmaade som handelsprisen: gennemsnit af annoncerne, dernaest km-regulering
+// op eller ned til bilens kilometerstand ved periodens udloeb. Der traekkes IKKE 5 %
+// annoncefradrag, fordi det fradrag hoerer til Motorstyrelsens afgiftsvaerdiansaettelse af
+// detailannoncer — her er der tale om handelspriser mellem forhandlere uden afgift.
+let restRowId = 0;
+function addRestRow(kilde, beskrivelse, pris, dato, km, kw, link){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><select class="r-kilde">
+      <option${kilde==='Bilbasen'?' selected':''}>Bilbasen</option>
+      <option${kilde==='DBA'?' selected':''}>DBA</option>
+      <option${kilde==='bilopslag.nu'?' selected':''}>bilopslag.nu</option>
+      <option${kilde==='Andet'?' selected':''}>Andet</option>
+    </select></td>
+    <td><input type="text" class="r-beskrivelse" value="${beskrivelse||''}" placeholder="fx årgang/udstyr"></td>
+    <td><input type="number" class="r-pris" value="${pris||''}" step="1000" min="0"></td>
+    <td><input type="text" class="r-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
+    <td><input type="number" class="r-km" value="${km||''}" step="1000" min="0"></td>
+    <td><input type="number" class="r-kw" value="${kw||''}" step="1" min="0" placeholder="kW"></td>
+    <td><div style="display:flex;gap:4px;align-items:center;"><input type="url" class="r-link" value="${link||''}" placeholder="link" style="flex:1;min-width:60px;"><button type="button" class="linkbtn no-print" title="Åbn link" onclick="const u=this.previousElementSibling.value; if(u) window.open(u,'_blank');">↗</button></div></td>
+    <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
+  document.getElementById('restBody').appendChild(tr);
+  tr.querySelectorAll('input, select').forEach(el => el.addEventListener('input', renderAll));
+  tr.querySelector('.rowbtn').addEventListener('click', () => { tr.remove(); renderAll(); });
+}
+
+function getRestComparisons(){
+  return Array.from(document.querySelectorAll('#restBody tr')).map(tr => {
+    const v = s => { const e = tr.querySelector(s); return e ? e.value : ''; };
+    return {
+      kilde: v('.r-kilde'), beskrivelse: v('.r-beskrivelse'),
+      pris: parseFloat(v('.r-pris')) || 0,
+      dato: v('.r-dato'),
+      km: parseFloat(v('.r-km')) || 0,
+      kw: parseFloat(v('.r-kw')) || 0,
+      link: v('.r-link')
+    };
+  }).filter(c => c.pris > 0);
+}
+
+// Returnerer restvaerdien EKSKL. moms og afgift, plus en forklarende note.
+function deriveResidualFromAds(rows, targetKm, ageMonthsAtEnd){
+  const out = { value: 0, count: 0, note: '', avg: 0, avgKm: 0, kmJust: 0, excluded: [] };
+  if(!rows.length) return out;
+  const sorted = rows.slice().sort((a,b) => a.pris - b.pris);
+  let used = sorted;
+  if(sorted.length >= 5){ out.excluded = [sorted[0], sorted[sorted.length-1]]; used = sorted.slice(1,-1); }
+  const avg = used.reduce((s,c) => s + c.pris, 0) / used.length;
+  const medKm = used.filter(c => c.km > 0);
+  const avgKm = medKm.length ? medKm.reduce((s,c) => s + c.km, 0) / medKm.length : 0;
+  const reg = kmRegulering(avg, targetKm, avgKm, ageMonthsAtEnd);
+  out.value = Math.max(0, avg + reg.amount);
+  out.count = used.length; out.avg = avg; out.avgKm = avgKm; out.kmJust = reg.amount;
+  out.note = `Restværdi af ${used.length} annonce(r) uden afgift og moms: gennemsnit ${fmt(avg)}` +
+    (out.excluded.length ? ` (billigste ${fmt(out.excluded[0].pris)} og dyreste ${fmt(out.excluded[1].pris)} udeladt)` : '') +
+    (reg.applied ? ` · km-regulering ${reg.amount >= 0 ? '+' : ''}${fmt(reg.amount)} til ${Math.round(targetKm).toLocaleString('da-DK')} km` : ` · ingen km-regulering (${reg.note ? reg.note.replace(/^Km-afvigelse /,'afvigelse ') : 'mangler km'})`) +
+    ` = ${fmt(out.value)} ekskl. moms og afgift.`;
+  return out;
+}
+
 function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnvendelse, udstyr){
   const empty = { totalIncl:0, tier:'none', usedCount:0, excludedNote:'', niveau:0,
                   kmReg:{amount:0,applied:false,note:''}, standKr:0, saerligKr:0,
@@ -1815,8 +1900,13 @@ function renderAll(){
   const months = parseFloat(document.getElementById('months').value) || 1;
   const restRente = parseFloat(document.getElementById('restRente').value) || 0;
   const kmStand = parseFloat(document.getElementById('kmStand').value) || 0;
-  const futureKm = ageMonths > 0 ? kmStand + (kmStand/ageMonths)*months : kmStand;
+  // Kilometerstanden ved udloeb fremskrives med den aftalte aarlige koersel — ikke med bilens
+  // hidtidige gennemsnit. En leasingaftale saetter et kilometerloft, og det er loftet der
+  // bestemmer, hvad bilen er vaerd naar den kommer retur.
+  const kmPrAar = parseFloat(document.getElementById('kmPrAar').value) || 0;
+  const futureKm = kmStand + kmPrAar * (months/12);
   const residualInfo = deriveResidualValueCombined(comparisons, futureKm, exAfgiftValue, ageMonths, months);
+  const restAds = deriveResidualFromAds(getRestComparisons(), futureKm, ageMonths + months);
   // MANUEL RESTVAERDI. Et konkret markedsopslag slaar altid en model: restvaerdien er
   // markedsprisen for en tilsvarende bil paa det tidspunkt, leasingperioden udloeber.
   // Prioritet: 1) manuelt indtastet restvaerdi, 2) vaerktoejets egen 3-metode-model.
@@ -1825,12 +1915,20 @@ function renderAll(){
   // enhed som den afgiftspligtige vaerdi, altsaa inkl. moms men uden afgift, saa der ganges
   // med 1,25. Uden det ville et tal ekskl. moms blive sammenlignet med et grundlag inkl. moms
   // og give et vaerditab, der er 25 % for stort.
+  // Prioritet: 1) manuelt indtastet restvaerdi, 2) annoncer uden afgift, 3) vaerktoejets model.
   const restManuel = parseFloat(document.getElementById('restManuel').value) || 0;
   let residual = residualInfo.value, restKilde = 'beregnet';
   if(restManuel > 0){
     residual = restManuel * 1.25;
-    restKilde = 'annoncer uden afgift, ' + fmt(restManuel) + ' ekskl. moms';
+    restKilde = 'manuelt, ' + fmt(restManuel) + ' ekskl. moms og afgift';
+  } else if(restAds.count > 0){
+    residual = restAds.value * 1.25;
+    restKilde = 'annoncer uden afgift, ' + fmt(restAds.value) + ' ekskl. moms og afgift';
   }
+  const rn = document.getElementById('restNote');
+  if(rn) rn.textContent = restAds.count > 0
+    ? restAds.note + (restManuel > 0 ? ' — men den manuelt indtastede restværdi bruges.' : '')
+    : 'Ingen restværdi-annoncer indtastet. Værktøjet bruger sin egen værditabsmodel, som er et estimat og ikke et markedsopslag.';
 
   const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente);
   const totalMonthly = fm.avgMonthly;
@@ -1918,6 +2016,7 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
 
 // ---------------- Events ----------------
 document.getElementById('addCompBtn').addEventListener('click', () => { addCompRow(); renderAll(); });
+document.getElementById('addRestBtn').addEventListener('click', () => { addRestRow(); renderAll(); });
 document.getElementById('addUdstyrBtn').addEventListener('click', () => { addUdstyrRow(); renderAll(); });
 
 // Slaar det officielle danske CO2-tal op i Motorregistret via bilopslag.nu.
@@ -2116,7 +2215,7 @@ document.querySelectorAll('#fuelSeg button').forEach(btn=>{
   });
 });
 
-['co2','ageMonths','kmStand','months','restRente','nypris'].forEach(id=>{
+['co2','ageMonths','kmStand','months','restRente','nypris','kmPrAar'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderAll);
 });
 ['maalenorm','stand','saerligAnvendelse'].forEach(id=>{
