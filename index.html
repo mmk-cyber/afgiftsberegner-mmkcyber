@@ -1900,6 +1900,13 @@ async function eeaCo2Opslag(){
     return;
   }
 
+  // Vaerktoejet VAELGER selv tallet og saetter det ind. Ingen kandidatliste: brugeren skal ikke
+  // sidde og gaette mellem 25 raekker. Valget foelger malenormen, som afgoerer hvilket tal der
+  // overhovedet er lovligt afgiftsgrundlag:
+  //   WLTP-periode (fra 01/2021)  -> WLTP-tallet, brugt direkte.
+  //   NEDC-periode (foer 09/2017) -> NEDC-tallet; vaerktoejet ganger selv med 1,21, jf. § 4 stk. 3.
+  //   NEDC2-perioden (09/2017-12/2020) -> KUN et aegte WLTP-tal duer. Findes det ikke for varianten,
+  //   indsaettes INTET — et gennemsnit fra andre motorvarianter ville vaere et opdigtet grundlag.
   const s = res.summary;
   const kilde = 'EEA (EU 2019/631)';
   const grundlag = s.kunDK ? s.antalBiler.toLocaleString('da-DK') + ' danske registreringer'
