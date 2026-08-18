@@ -478,6 +478,10 @@
         <label for="co2Source">CO2-kilde</label>
         <input type="text" id="co2Source" placeholder="fx BMW.dk, COC-dok.">
       </div>
+      <div class="field">
+        <label for="effektKw">Motoreffekt (kW)</label>
+        <input type="number" id="effektKw" value="0" min="0" step="1" placeholder="fx 270" title="Bruges til at ramme den rigtige motorvariant i CO2-opslaget. 1 hk = 0,7355 kW.">
+      </div>
     </div>
     <div class="grid grid-4">
       <div class="field">
@@ -1027,7 +1031,7 @@ function eeaScore(model, cn){
 // Slaar maerke+model+aargang op og returnerer varianterne aggregeret, sorteret efter
 // hvor godt navnet matcher og derefter efter hvor mange biler der er registreret med
 // praecis den kombination (den stoerste gruppe er naesten altid standardvarianten).
-async function eeaCo2Lookup(maerke, model, aar, fuelKode, fuelVis){
+async function eeaCo2Lookup(maerke, model, aar, fuelKode, fuelVis, kw){
   const mk = eeaMaerkeToken(maerke);
   if(!mk) throw new Error('Udfyld mærket først.');
   const y0 = (aar || new Date().getFullYear()) - 1;
@@ -1058,6 +1062,14 @@ async function eeaCo2Lookup(maerke, model, aar, fuelKode, fuelVis){
     const alle = await eeaQuery(byg(false), 250);
     rows = rows.concat(alle);
   }
+
+  // MOTORVARIANT: uden effekt-filter blandes fx C 43 med 270 kW og 287 kW sammen, og
+  // gennemsnittet bliver et tal ingen af bilerne har. Er effekten oplyst, holdes kun
+  // raekker inden for +/- 5 kW — det daekker afrundinger mellem hk og kW.
+  if(kw > 0){
+    const iVariant = rows.filter(r => r.kw && Math.abs(parseFloat(r.kw) - kw) <= 5);
+    if(iVariant.length) rows = iVariant;
+  }
   const scored = rows.map(r => Object.assign({}, r, { score: eeaScore(model, r.Cn) }))
                      .filter(r => r.score > 0)
                      .sort((a,b) => (b.score - a.score) || (b.n - a.n));
@@ -1078,6 +1090,10 @@ async function eeaCo2Lookup(maerke, model, aar, fuelKode, fuelVis){
     const v = brug.map(r => parseFloat(r[felt])).filter(x => x > 0);
     return v.length ? { min: Math.min.apply(null, v), max: Math.max.apply(null, v) } : null;
   };
+  // Hvor stor en del af varianten der faktisk HAR et WLTP-tal. Vigtigt: WLTP blev foerst
+  // indberettet fra 2018, saa 2017-biler har typisk kun NEDC. Uden dette tal ville et
+  // gennemsnit beregnet paa en haandfuld nyere raekker se ud som om det gjaldt hele varianten.
+  const antalMed = felt => brug.reduce((a,r) => a + (parseFloat(r[felt]) > 0 ? r.n : 0), 0);
 
   return {
     rows: scored.slice(0, 25),
@@ -1087,6 +1103,9 @@ async function eeaCo2Lookup(maerke, model, aar, fuelKode, fuelVis){
       kunDK: dk.length > 0,
       lande: Array.from(new Set(brug.map(r => r.MS))).sort(),
       antalBiler: brug.reduce((a,r) => a + r.n, 0),
+      kw: brug[0].kw || null,
+      antalMedWltp: antalMed('ewltp'),
+      antalMedNedc: antalMed('enedc'),
       ewltp: vaegtet('ewltp'),
       enedc: vaegtet('enedc'),
       ewltpSpaend: spaend('ewltp'),
@@ -1865,9 +1884,10 @@ async function eeaCo2Opslag(){
   boks.style.display = 'block';
   boks.innerHTML = '<p class="footnote" style="margin:0;">Slår <strong>' + maerke + ' ' + model + '</strong> (' + (aar-1) + '–' + (aar+1) + ') op i EEA\'s database …</p>';
 
+  const kw = parseFloat(document.getElementById('effektKw').value) || 0;
   let res;
   try{
-    res = await eeaCo2Lookup(maerke, model, aar, fuel, fuelDisplay);
+    res = await eeaCo2Lookup(maerke, model, aar, fuel, fuelDisplay, kw);
   }catch(e){
     boks.innerHTML = '<p class="footnote" style="margin:0;">Opslaget mislykkedes: ' + e.message +
       '. Prøv «Slå dansk CO2-tal op i Motorregistret» i stedet.</p>';
@@ -1881,43 +1901,42 @@ async function eeaCo2Opslag(){
   }
 
   const s = res.summary;
-  const nf = v => v == null ? '–' : Math.round(v) + ' g/km';
-  const forklaring = [];
-  forklaring.push('<strong>' + s.cn + '</strong> — vægtet gennemsnit af ' + s.antalBiler.toLocaleString('da-DK') +
-    ' registreringer i ' + (s.kunDK ? 'Danmark' : s.lande.join(', ')) + '.');
-  forklaring.push('WLTP <strong>' + nf(s.ewltp) + '</strong>' +
-    (s.ewltpSpaend && s.ewltpSpaend.min !== s.ewltpSpaend.max ? ' (spænd ' + s.ewltpSpaend.min + '–' + s.ewltpSpaend.max + ')' : '') +
-    ' · NEDC ' + nf(s.enedc) +
-    (s.enedcSpaend && s.enedcSpaend.min !== s.enedcSpaend.max ? ' (spænd ' + s.enedcSpaend.min + '–' + s.enedcSpaend.max + ')' : '') + '.');
-  if(norm && norm.norm === 'nedc2'){
-    forklaring.push('Bilen er fra NEDC2-perioden. Motorregistrets tal må ikke bruges og NEDC2 må ikke omregnes ×1,21 — ' +
-      '<strong>WLTP-tallet herover er det korrekte afgiftsgrundlag.</strong>');
-  } else if(norm && norm.norm === 'nedc'){
-    forklaring.push('Bilen er fra NEDC-perioden. Brug NEDC-tallet og lad værktøjet gange med 1,21, jf. § 4, stk. 3.');
-  }
-  forklaring.push('Tallene er indberettet af medlemslandene efter forordning (EU) 2019/631. ' +
-    'Kontrollér altid mod bilens COC-dokument, hvis den konkrete variant afviger.');
+  const kilde = 'EEA (EU 2019/631)';
+  const grundlag = s.kunDK ? s.antalBiler.toLocaleString('da-DK') + ' danske registreringer'
+                           : s.antalBiler.toLocaleString('da-DK') + ' registreringer i ' + s.lande.join(', ');
+  const variant = s.cn + (s.kw ? ', ' + s.kw + ' kW' : '') + (kw ? '' : ' — udfyld feltet «Motoreffekt (kW)» for at ramme varianten præcist');
+  const vis = (txt, ok) => {
+    boks.innerHTML = '<p class="footnote" style="margin:0;padding:8px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.15);' +
+      (ok ? '' : 'background:rgba(200,120,0,.08);') + '">' + txt + '</p>';
+  };
 
-  let html = '<div style="border:1px solid rgba(0,0,0,.15);border-radius:8px;padding:10px 12px;">' +
-    '<p class="footnote" style="margin:0 0 8px;">' + forklaring.join(' ') + '</p>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">';
-  if(s.ewltp) html += '<button class="addbtn no-print" type="button" data-eea-set="' + Math.round(s.ewltp) + '" data-eea-norm="wltp" style="margin-top:0;">Brug WLTP ' + Math.round(s.ewltp) + ' g/km</button>';
-  if(s.enedc) html += '<button class="addbtn no-print" type="button" data-eea-set="' + Math.round(s.enedc) + '" data-eea-norm="nedc" style="margin-top:0;">Brug NEDC ' + Math.round(s.enedc) + ' g/km (×1,21)</button>';
-  html += '</div><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>' +
-    ['Land','År','Betegnelse','Brændstof','cm³','kW','Vægt','NEDC','WLTP','Antal',''].map(h => '<th style="text-align:left;padding:3px 6px;border-bottom:1px solid rgba(0,0,0,.15);">' + h + '</th>').join('') +
-    '</tr></thead><tbody>';
-  res.rows.forEach(r => {
-    html += '<tr>' + [r.MS, r.aar, r.Cn, r.Ft, r.ccm || '–', r.kw || '–', r.mkg ? r.mkg + ' kg' : '–',
-      r.enedc || '–', r.ewltp || '–', r.n].map(v => '<td style="padding:3px 6px;border-bottom:1px solid rgba(0,0,0,.06);">' + v + '</td>').join('') +
-      '<td style="padding:3px 6px;border-bottom:1px solid rgba(0,0,0,.06);">' +
-      (r.ewltp ? '<button class="addbtn no-print" type="button" data-eea-set="' + r.ewltp + '" data-eea-norm="wltp" style="margin-top:0;padding:2px 8px;">Brug</button>' : '') +
-      '</td></tr>';
-  });
-  html += '</tbody></table></div>';
-  boks.innerHTML = html;
-  boks.querySelectorAll('[data-eea-set]').forEach(b => b.addEventListener('click', () => {
-    eeaIndsaetCo2(parseFloat(b.dataset.eeaSet), b.dataset.eeaNorm, 'EEA (EU 2019/631)');
-  }));
+  const normNavn = norm ? norm.norm : 'wltp';
+  if(normNavn === 'wltp' || normNavn === 'nedc2'){
+    if(s.ewltp && s.antalMedWltp > 0){
+      eeaIndsaetCo2(s.ewltp, 'wltp', kilde);
+      vis('CO2 sat til <strong>' + Math.round(s.ewltp) + ' g/km (WLTP)</strong> for ' + variant +
+          ' — vægtet gennemsnit af ' + s.antalMedWltp.toLocaleString('da-DK') + ' af ' + grundlag +
+          (s.ewltpSpaend && s.ewltpSpaend.min !== s.ewltpSpaend.max ? ' (spænd ' + s.ewltpSpaend.min + '–' + s.ewltpSpaend.max + ' g/km)' : '') +
+          '. Kilde: EEA, forordning (EU) 2019/631.', true);
+    } else {
+      vis('<strong>Intet WLTP-tal registreret for ' + variant + '.</strong> ' +
+          (normNavn === 'nedc2'
+            ? 'Bilen er fra NEDC2-perioden (09/2017–12/2020), hvor NEDC2-tallet hverken må bruges direkte eller omregnes ×1,21. '
+            : '') +
+          'EEA har kun NEDC for denne variant' + (s.enedc ? ' (' + Math.round(s.enedc) + ' g/km)' : '') +
+          ', fordi WLTP først blev indberettet fra 2018. Der er derfor <strong>ikke indsat noget tal</strong> — ' +
+          'WLTP skal hentes fra bilens COC-dokument.', false);
+    }
+  } else {
+    if(s.enedc && s.antalMedNedc > 0){
+      eeaIndsaetCo2(s.enedc, 'nedc', kilde);
+      vis('CO2 sat til <strong>' + Math.round(s.enedc) + ' g/km (NEDC)</strong> for ' + variant +
+          ' — vægtet gennemsnit af ' + s.antalMedNedc.toLocaleString('da-DK') + ' af ' + grundlag +
+          '. Værktøjet ganger selv med 1,21, jf. registreringsafgiftslovens § 4, stk. 3.', true);
+    } else {
+      vis('<strong>Intet CO2-tal fundet for ' + variant + '.</strong> Hent tallet fra bilens COC-dokument.', false);
+    }
+  }
 }
 document.getElementById('eeaCo2Btn').addEventListener('click', eeaCo2Opslag);
 document.getElementById('printBtn').addEventListener('click', () => window.print());
