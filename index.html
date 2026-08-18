@@ -2028,9 +2028,19 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
 
   document.getElementById('leaseTotal').textContent = fmt(nyMaanedlig * 1.25) + '/md. (inkl. moms)';
 
+  // Avancen indgaar i den total, slideren fordeler, og vises derfor ogsaa i sliderens tekst:
+  // baade hele avancen og den del af den, der ligger i foerstegangsydelsen ved det aktuelle
+  // traek. Saa kan man aflaese, hvor stor en del af engangsbeloebet der er fortjeneste.
   const sl = document.getElementById('sliderLabel');
-  if(sl) sl.textContent = (totalCostExcl > 0 ? (foersteExcl/totalCostExcl*100).toFixed(1) : '0') +
-    ' % af de samlede omkostninger — ' + fmt(foersteExcl) + ' ekskl. moms';
+  if(sl){
+    const avanceIFoerste = totalCostExcl > 0 ? avanceKr * (foersteExcl/totalCostExcl) : 0;
+    sl.textContent = (totalCostExcl > 0 ? (foersteExcl/totalCostExcl*100).toFixed(1).replace('.',',') : '0') +
+      ' % af de samlede omkostninger — ' + fmt(foersteExcl) + ' ekskl. moms' +
+      (avanceKr > 0
+        ? ' · inkl. avance ' + fmt(avanceKr) + ' (' + avancePct.toFixed(1).replace('.',',') + ' %), heraf ' +
+          fmt(avanceIFoerste) + ' i førstegangsydelsen og ' + fmt(avanceKr - avanceIFoerste) + ' fordelt på månederne'
+        : '');
+  }
   const rk = document.getElementById('residualSourceNote');
   if(rk && restKilde !== 'beregnet') rk.textContent = 'Restværdi sat manuelt (' + restKilde + '): ' + fmt(residual) + ' inkl. moms. Værktøjets egen beregning ville give ' + fmt(residualInfo.value) + '.';
 }
