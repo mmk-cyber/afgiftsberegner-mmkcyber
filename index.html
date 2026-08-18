@@ -639,6 +639,7 @@
         Træk for at flytte omkostningen mellem førstegangsydelse og månedlig ydelse — <span id="sliderLabel">20 %</span>
       </label>
       <input type="range" id="foersteYdelseSlider" min="0" max="60" step="1" value="20" style="width:100%;">
+      <div id="flexAdvarsel" style="display:none;margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(200,120,0,.10);border:1px solid rgba(200,120,0,.35);font-size:13px;line-height:1.5;"></div>
       <p class="footnote" style="margin:6px 0 0;">De samlede omkostninger holdes fast, mens du trækker: jo større førstegangsydelse, jo mindre bliver den månedlige ydelse. Bemærk at et rigtigt leasingselskab typisk vil give en <em>lidt</em> lavere totalpris ved høj udbetaling, fordi rentedelen falder — her er totalen låst, så du kan se den rene fordeling.</p>
     </div>
     <div class="grid grid-2" style="margin-top:16px;">
@@ -688,18 +689,22 @@
       <div class="big" id="leaseTotal">0 kr./md.</div>
       <div class="line" style="opacity:.7;"><span>Bilfinansiering (til orientering, indgår ikke i ydelsen)</span><span id="lCarMonthly">–</span></div>
       <div class="line"><span>Afgift/rente, gnsn. pr. md. (ekskl. moms)</span><span id="lAfgiftMonthly">–</span></div>
-      <div class="line"><span>Restværdi ved periodens udløb, ekskl. moms</span><span id="lResidual">–</span></div>
-      <div class="line"><span>Restværdi ved periodens udløb, inkl. moms</span><span id="lResidualIncl">–</span></div>
-      <div class="line"><span>Værditab i leasingperioden, ekskl. moms</span><span id="lValueLoss">–</span></div>
-      <div class="line"><span>Værditab i leasingperioden, inkl. moms</span><span id="lValueLossIncl">–</span></div>
-      <div class="line"><span>Førstegangsydelse, ekskl. moms</span><span id="lFoersteExcl">–</span></div>
-      <div class="line"><span>Førstegangsydelse, inkl. moms (25%)</span><span id="lFoersteIncl">–</span></div>
-      <div class="line total"><span>Samlet ydelse pr. måned, ekskl. moms</span><span id="lTotalMonthlyExcl">–</span></div>
-      <div class="line total"><span>Samlet ydelse pr. måned, inkl. moms (25%)</span><span id="lTotalMonthlyIncl">–</span></div>
-      <div class="line"><span>Kostpris i perioden (værditab + afgift/rente), ekskl. moms</span><span id="lKostpris">–</span></div>
-      <div class="line"><span>Avance</span><span id="lAvance">–</span></div>
-      <div class="line total"><span>Totale omkostninger i perioden, ekskl. moms</span><span id="lTotalCostExcl">–</span></div>
-      <div class="line total"><span>Totale omkostninger i perioden, inkl. moms</span><span id="lTotalCostIncl">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;opacity:.65;font-size:12.5px;">
+        <span></span><span style="text-align:right;">Ekskl. moms</span><span style="text-align:right;">Inkl. moms</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Restværdi ved periodens udløb</span><span id="lResidual" style="text-align:right;">–</span><span id="lResidualIncl" style="text-align:right;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Værditab i leasingperioden</span><span id="lValueLoss" style="text-align:right;">–</span><span id="lValueLossIncl" style="text-align:right;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Førstegangsydelse</span><span id="lFoersteExcl" style="text-align:right;">–</span><span id="lFoersteIncl" style="text-align:right;">–</span></div>
+      <div class="line total" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Samlet ydelse pr. måned</span><span id="lTotalMonthlyExcl" style="text-align:right;">–</span><span id="lTotalMonthlyIncl" style="text-align:right;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Kostpris i perioden (værditab + afgift/rente)</span><span id="lKostpris" style="text-align:right;">–</span><span id="lKostprisIncl" style="text-align:right;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Avance</span><span id="lAvance" style="text-align:right;">–</span><span id="lAvanceIncl" style="text-align:right;">–</span></div>
+      <div class="line total" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
+        <span>Totale omkostninger i perioden</span><span id="lTotalCostExcl" style="text-align:right;">–</span><span id="lTotalCostIncl" style="text-align:right;">–</span></div>
       <div class="line" id="impliedRow" style="display:none;"><span>Markedsprisen svarer til en avance på</span><span id="lImpliedAvance">–</span></div>
       <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
     </div>
@@ -1884,17 +1889,46 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   const totalCostExcl = kostprisExcl + avanceKr;
   const fyKr  = parseFloat(document.getElementById('foersteYdelseKr').value) || 0;
   const fyPct = parseFloat(document.getElementById('foersteYdelsePct').value) || 0;
-  let foersteExcl = fyKr > 0 ? fyKr : exAfgiftValue * (fyPct/100);
-  foersteExcl = Math.min(Math.max(0, foersteExcl), totalCostExcl);   // kan ikke overstige totalen
+  const oensketFoerste = fyKr > 0 ? fyKr : exAfgiftValue * (fyPct/100);
+  const foersteExcl = Math.min(Math.max(0, oensketFoerste), totalCostExcl);
+  const klippet = oensketFoerste > totalCostExcl + 1;
   const restMdr = Math.max(0, totalCostExcl - foersteExcl);
   const nyMaanedlig = months > 0 ? restMdr / months : 0;
+
+  // SLIDERENS LOFT. Foerstegangsydelsen kan aldrig overstige de samlede omkostninger — er hele
+  // perioden forudbetalt, er maanedsydelsen nul. Uden et loft ville slideren se doed ud, fordi
+  // den blev klippet med det samme og ikke flyttede noget. Loftet saettes derfor der, hvor
+  // maanedsydelsen rammer nul, saa traekket altid har en synlig effekt.
+  const sliderEl = document.getElementById('foersteYdelseSlider');
+  if(sliderEl && exAfgiftValue > 0 && totalCostExcl > 0){
+    const maxPct = Math.max(1, Math.floor(totalCostExcl / exAfgiftValue * 100));
+    sliderEl.max = String(maxPct);
+    if(parseFloat(sliderEl.value) > maxPct) sliderEl.value = String(maxPct);
+  }
+
+  // ADVARSLER. To ting kan goere billedet misvisende, og begge skal siges hoejt.
+  const advEl = document.getElementById('flexAdvarsel');
+  if(advEl){
+    const adv = [];
+    if(klippet) adv.push('<strong>Førstegangsydelsen er større end de samlede omkostninger</strong> og er derfor skåret ned til ' +
+      fmt(totalCostExcl) + '. Hele perioden er forudbetalt, og månedsydelsen er nul. Slideren stopper nu ved det punkt.');
+    const manglerVurdering = comparisons.length > 0 && comparisons.every(c => !c.vaerdiUAfgift);
+    if(restKilde === 'beregnet' && valueLossPct < 8 && months >= 12)
+      adv.push('<strong>Værditabet ser urealistisk lavt ud (' + valueLossPct + ' % på ' + months + ' mdr.).</strong> ' +
+        (manglerVurdering ? 'Ingen sammenligninger har «Værdi u. afgift» udfyldt, så peer-metoden er sprunget over og restværdien bliver for høj. Slå bilerne op på bilopslag.nu og udfyld feltet — eller sæt restværdien manuelt.'
+                          : 'Kontrollér restværdien, eller sæt den manuelt.'));
+    advEl.innerHTML = adv.join('<br><br>');
+    advEl.style.display = adv.length ? '' : 'none';
+  }
 
   document.getElementById('lFoersteExcl').textContent = fmt(foersteExcl);
   document.getElementById('lFoersteIncl').textContent = fmt(foersteExcl * 1.25);
   document.getElementById('lTotalMonthlyExcl').textContent = fmt(nyMaanedlig) + '/md.';
   document.getElementById('lTotalMonthlyIncl').textContent = fmt(nyMaanedlig * 1.25) + '/md.';
   document.getElementById('lKostpris').textContent = fmt(kostprisExcl);
+  document.getElementById('lKostprisIncl').textContent = fmt(kostprisExcl * 1.25);
   document.getElementById('lAvance').textContent = fmt(avanceKr) + (avancePct ? ' (' + avancePct + ' %)' : '');
+  document.getElementById('lAvanceIncl').textContent = fmt(avanceKr * 1.25);
   document.getElementById('lTotalCostExcl').textContent = fmt(totalCostExcl);
   document.getElementById('lTotalCostIncl').textContent = fmt(totalCostExcl * 1.25);
 
