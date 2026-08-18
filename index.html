@@ -1388,17 +1388,37 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   // understoette handelsprisen og gerne 5 eller flere." Undtagelsesvist faerre ved helt specielle
   // koeretoejer med meget sparsomt sammenligningsgrundlag.
   //
-  // VIGTIGT — INGEN TRIMNING: Den juridiske vejledning indeholder INGEN regel om at se bort fra
-  // den billigste og dyreste annonce. Motorstyrelsens formulering "undgaa den eller de billigste
-  // og dyreste annonce(r)" paa motorst.dk staar i afsnittet om hvordan man UDVAELGER annoncer —
-  // det er vejledning til menneskets udsoegning, ikke en mekanisk trimning af det faerdige saet.
-  // Deres eget regneeksempel bruger ALLE tre annoncer i gennemsnittet. Tidligere versioner af
-  // dette vaerktoej trimmede automatisk, hvilket gav et forkert handelsprisniveau.
-  const used = adj.slice().sort((a,b)=>a.prisJust-b.prisJust);
+  // BILLIGSTE OG DYRESTE ANNONCE UDELADES — men kun naar der er nok tilbage.
+  // Motorstyrelsen skriver paa motorst.dk (Vaerdifastsaettelse af brugte personbiler), i afsnittet
+  // "Vaer opmaerksom paa foelgende, naar du soeger efter annoncer":
+  //   "Du skal saa vidt muligt undgaa de annoncer, der ikke er tilsvarende eller sammenlignelige
+  //    med den personbil, du skal vaerdifastsaette. Undgaa fx: ... den eller de billigste og
+  //    dyreste annonce(r)."
+  // Det er formuleret som et UDVAELGELSESKRITERIUM ved soegningen, ikke som en efterfoelgende
+  // trimning — men virkningen er den samme: yderannoncerne hoerer ikke hjemme i grundlaget.
+  //
+  // Graensen paa 5: hovedreglen om mindst 3 annoncer gaelder stadig. Udelader man baade den
+  // billigste og den dyreste, kraever det derfor mindst 5 annoncer for at have 3 tilbage.
+  // Det er ogsaa grunden til, at Motorstyrelsens eget regneeksempel med praecis 3 annoncer
+  // beholder dem alle — der er ikke noget at give af.
+  //
+  // "Saa vidt muligt" betyder, at det er en bloed regel: vaerktoejet udelader automatisk, men
+  // viser altid hvilke annoncer der er taget ud, saa valget kan efterproeves og omgoeres.
+  const sorted = adj.slice().sort((a,b)=>a.prisJust-b.prisJust);
+  let used = sorted, excluded = [];
+  if(sorted.length >= 5){
+    excluded = [sorted[0], sorted[sorted.length-1]];
+    used = sorted.slice(1, -1);
+  }
   let excludedNote = '';
-  const tier = used.length < 3 ? 'thin' : (used.length >= 5 ? 'ok' : 'mild');
-  if(used.length >= 3){
-    excludedNote = `Alle ${used.length} annoncer indgår i gennemsnittet. Den juridiske vejledning har ingen regel om at fjerne billigste og dyreste — udvælg i stedet annoncer der ligner bilen mest muligt.`;
+  const tier = used.length < 3 ? 'thin' : (sorted.length >= 5 ? 'ok' : 'mild');
+  if(excluded.length){
+    excludedNote = `Billigste (${Math.round(excluded[0].pris).toLocaleString('da-DK')} kr.) og dyreste ` +
+      `(${Math.round(excluded[1].pris).toLocaleString('da-DK')} kr.) annonce er udeladt, jf. Motorstyrelsens ` +
+      `udvælgelseskriterier. ${used.length} annoncer indgår i gennemsnittet.`;
+  } else if(sorted.length >= 3){
+    excludedNote = `Alle ${used.length} annoncer indgår. Billigste og dyreste udelades først fra 5 annoncer — ` +
+      `med færre ville hovedreglen om mindst 3 annoncer blive brudt. Find gerne flere annoncer, så yderpunkterne kan tages ud.`;
   }
 
   // Trin 2: gennemsnit af de justerede priser = handelsprisniveau.
