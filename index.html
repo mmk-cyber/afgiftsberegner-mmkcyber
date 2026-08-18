@@ -624,6 +624,16 @@
         <input type="number" id="foersteYdelseKr" value="0" min="0" step="1000" placeholder="0 = brug procenten">
       </div>
     </div>
+    <div class="grid grid-2" style="margin-top:12px;">
+      <div class="field">
+        <label for="avancePct">Leasingselskabets avance (%)</label>
+        <input type="number" id="avancePct" value="0" min="0" max="100" step="0.5" title="Lægges oven på kostprisen (værditab + afgift + rente).">
+      </div>
+      <div class="field">
+        <label for="markedsYdelse">Markedets ydelse pr. md. inkl. moms (kr.) — viser den underforståede avance</label>
+        <input type="number" id="markedsYdelse" value="0" min="0" step="100" placeholder="0 = spring over">
+      </div>
+    </div>
     <div style="margin-top:14px;">
       <label for="foersteYdelseSlider" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">
         Træk for at flytte omkostningen mellem førstegangsydelse og månedlig ydelse — <span id="sliderLabel">20 %</span>
@@ -686,8 +696,11 @@
       <div class="line"><span>Førstegangsydelse, inkl. moms (25%)</span><span id="lFoersteIncl">–</span></div>
       <div class="line total"><span>Samlet ydelse pr. måned, ekskl. moms</span><span id="lTotalMonthlyExcl">–</span></div>
       <div class="line total"><span>Samlet ydelse pr. måned, inkl. moms (25%)</span><span id="lTotalMonthlyIncl">–</span></div>
+      <div class="line"><span>Kostpris i perioden (værditab + afgift/rente), ekskl. moms</span><span id="lKostpris">–</span></div>
+      <div class="line"><span>Avance</span><span id="lAvance">–</span></div>
       <div class="line total"><span>Totale omkostninger i perioden, ekskl. moms</span><span id="lTotalCostExcl">–</span></div>
       <div class="line total"><span>Totale omkostninger i perioden, inkl. moms</span><span id="lTotalCostIncl">–</span></div>
+      <div class="line" id="impliedRow" style="display:none;"><span>Markedsprisen svarer til en avance på</span><span id="lImpliedAvance">–</span></div>
       <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
     </div>
   </div>
@@ -1862,7 +1875,13 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   // det er praecis den afvejning en leasingtager staar i. Bemaerk at et rigtigt
   // leasingselskab typisk giver en let lavere total ved hoej udbetaling (mindre
   // rentedel); her er totalen fastholdt, saa fordelingen kan aflaeses rent.
-  const totalCostExcl = totalMonthly * months;
+  // Totalen skal daekke HELE leasingomkostningen, ikke kun afgiftsdelen: bilens vaerditab i
+  // perioden er den stoerste post, og uden den ville en foerstegangsydelse paa 20 % af bilens
+  // vaerdi overstige totalen mange gange og presse maanedsydelsen til nul.
+  const kostprisExcl = valueLossExcl + totalMonthly * months;
+  const avancePct = parseFloat(document.getElementById('avancePct').value) || 0;
+  const avanceKr  = kostprisExcl * (avancePct/100);
+  const totalCostExcl = kostprisExcl + avanceKr;
   const fyKr  = parseFloat(document.getElementById('foersteYdelseKr').value) || 0;
   const fyPct = parseFloat(document.getElementById('foersteYdelsePct').value) || 0;
   let foersteExcl = fyKr > 0 ? fyKr : exAfgiftValue * (fyPct/100);
@@ -1874,8 +1893,22 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   document.getElementById('lFoersteIncl').textContent = fmt(foersteExcl * 1.25);
   document.getElementById('lTotalMonthlyExcl').textContent = fmt(nyMaanedlig) + '/md.';
   document.getElementById('lTotalMonthlyIncl').textContent = fmt(nyMaanedlig * 1.25) + '/md.';
+  document.getElementById('lKostpris').textContent = fmt(kostprisExcl);
+  document.getElementById('lAvance').textContent = fmt(avanceKr) + (avancePct ? ' (' + avancePct + ' %)' : '');
   document.getElementById('lTotalCostExcl').textContent = fmt(totalCostExcl);
   document.getElementById('lTotalCostIncl').textContent = fmt(totalCostExcl * 1.25);
+
+  // BAGLAENS: kender man markedets ydelse, kan man aflaese hvilken avance den svarer til.
+  // Det er det tal, der afgoer om et tilbud er skarpt eller ej.
+  const marked = parseFloat(document.getElementById('markedsYdelse').value) || 0;
+  const impRow = document.getElementById('impliedRow');
+  if(marked > 0 && kostprisExcl > 0){
+    const markedTotalExcl = (marked/1.25) * months + foersteExcl;
+    const impPct = (markedTotalExcl / kostprisExcl - 1) * 100;
+    impRow.style.display = '';
+    document.getElementById('lImpliedAvance').textContent =
+      impPct.toFixed(1) + ' % (' + fmt(markedTotalExcl - kostprisExcl) + ' over kostpris)';
+  } else if(impRow){ impRow.style.display = 'none'; }
   document.getElementById('leaseTotal').textContent = fmt(nyMaanedlig * 1.25) + '/md. (inkl. moms)';
 
   const sl = document.getElementById('sliderLabel');
@@ -2065,7 +2098,7 @@ function eeaAutoOpslag(){
     kr.value = 0; renderAll();
   });
   kr.addEventListener('input', renderAll);
-  ['restManuel','vaerditabPct'].forEach(id => {
+  ['restManuel','vaerditabPct','avancePct','markedsYdelse'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('input', renderAll);
   });
