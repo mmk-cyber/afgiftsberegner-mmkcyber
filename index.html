@@ -606,6 +606,31 @@
       </div>
     </div>
     <p class="footnote" style="margin:8px 0 0;">To forskellige renter, med vilje: <strong>bilfinansiering</strong> er en almindelig markedsrente for lånet til bilens ekskl.-afgift-værdi. <strong>Rentetillæg på restafgift</strong> er en lovbestemt sats (registreringsafgiftslovens §3b, stk. 3) af den del af registreringsafgiften, du endnu ikke har betalt via ydelserne — 3,8% er den gældende sats for hele 2026, reguleret halvårligt af Motorstyrelsen.</p>
+    <div class="grid grid-4" style="margin-top:16px;">
+      <div class="field">
+        <label for="restManuel">Restværdi, manuel (kr. inkl. moms)</label>
+        <input type="number" id="restManuel" value="0" min="0" step="1000" placeholder="0 = beregn selv" title="Overstyrer den beregnede restværdi. 0 betyder at værktøjet selv beregner.">
+      </div>
+      <div class="field">
+        <label for="vaerditabPct">…eller værditab (%)</label>
+        <input type="number" id="vaerditabPct" value="0" min="0" max="100" step="0.5" placeholder="0 = beregn selv" title="Værditab i procent af bilens værdi. Bruges kun hvis restværdi-feltet er 0.">
+      </div>
+      <div class="field">
+        <label for="foersteYdelsePct">Førstegangsydelse (% af bilens værdi)</label>
+        <input type="number" id="foersteYdelsePct" value="20" min="0" max="100" step="0.5">
+      </div>
+      <div class="field">
+        <label for="foersteYdelseKr">…eller førstegangsydelse (kr. ekskl. moms)</label>
+        <input type="number" id="foersteYdelseKr" value="0" min="0" step="1000" placeholder="0 = brug procenten">
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <label for="foersteYdelseSlider" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">
+        Træk for at flytte omkostningen mellem førstegangsydelse og månedlig ydelse — <span id="sliderLabel">20 %</span>
+      </label>
+      <input type="range" id="foersteYdelseSlider" min="0" max="60" step="1" value="20" style="width:100%;">
+      <p class="footnote" style="margin:6px 0 0;">De samlede omkostninger holdes fast, mens du trækker: jo større førstegangsydelse, jo mindre bliver den månedlige ydelse. Bemærk at et rigtigt leasingselskab typisk vil give en <em>lidt</em> lavere totalpris ved høj udbetaling, fordi rentedelen falder — her er totalen låst, så du kan se den rene fordeling.</p>
+    </div>
     <div class="grid grid-2" style="margin-top:16px;">
       <div class="field" style="grid-column:1/-1;">
         <label>Restværdi (ekskl. moms og afgift) — gennemsnit af 3 metoder: peer-sammenligning, regression og SKAT's værditabskurve</label>
@@ -657,8 +682,12 @@
       <div class="line"><span>Restværdi ved periodens udløb, inkl. moms</span><span id="lResidualIncl">–</span></div>
       <div class="line"><span>Værditab i leasingperioden, ekskl. moms</span><span id="lValueLoss">–</span></div>
       <div class="line"><span>Værditab i leasingperioden, inkl. moms</span><span id="lValueLossIncl">–</span></div>
+      <div class="line"><span>Førstegangsydelse, ekskl. moms</span><span id="lFoersteExcl">–</span></div>
+      <div class="line"><span>Førstegangsydelse, inkl. moms (25%)</span><span id="lFoersteIncl">–</span></div>
       <div class="line total"><span>Samlet ydelse pr. måned, ekskl. moms</span><span id="lTotalMonthlyExcl">–</span></div>
       <div class="line total"><span>Samlet ydelse pr. måned, inkl. moms (25%)</span><span id="lTotalMonthlyIncl">–</span></div>
+      <div class="line total"><span>Totale omkostninger i perioden, ekskl. moms</span><span id="lTotalCostExcl">–</span></div>
+      <div class="line total"><span>Totale omkostninger i perioden, inkl. moms</span><span id="lTotalCostIncl">–</span></div>
       <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
     </div>
   </div>
@@ -1796,7 +1825,13 @@ function renderAll(){
   const kmStand = parseFloat(document.getElementById('kmStand').value) || 0;
   const futureKm = ageMonths > 0 ? kmStand + (kmStand/ageMonths)*months : kmStand;
   const residualInfo = deriveResidualValueCombined(comparisons, futureKm, exAfgiftValue, ageMonths, months);
-  const residual = residualInfo.value;
+  // MANUEL RESTVAERDI. Et konkret tilbud fra et leasingselskab slaar altid en model.
+  // Prioritet: 1) restvaerdi i kroner, 2) vaerditab i procent, 3) vaerktoejets egen 3-metode-model.
+  const restManuel   = parseFloat(document.getElementById('restManuel').value) || 0;
+  const vaerditabPct = parseFloat(document.getElementById('vaerditabPct').value) || 0;
+  let residual = residualInfo.value, restKilde = 'beregnet';
+  if(restManuel > 0){ residual = restManuel; restKilde = 'manuel restværdi'; }
+  else if(vaerditabPct > 0 && exAfgiftValue > 0){ residual = exAfgiftValue * (1 - vaerditabPct/100); restKilde = 'manuelt værditab ' + vaerditabPct + ' %'; }
 
   const udbetaling = exAfgiftValue * (downPct/100);
   const financed = exAfgiftValue - udbetaling;
@@ -1821,9 +1856,33 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
       (residualInfo.methodC ? `SKAT-værditabskurve: ${fmt(residualInfo.methodC)}. ` : '') +
       `Estimeret km ved periodens udløb: ${Math.round(futureKm).toLocaleString('da-DK')} km.`
     : 'Ingen metode kunne beregne en restværdi — udfyld mindst én sammenligning med Værdi u. afgift, eller angiv en afgiftspligtig værdi og alder.';
-  document.getElementById('lTotalMonthlyExcl').textContent = fmt(totalMonthly) + '/md.';
-  document.getElementById('lTotalMonthlyIncl').textContent = fmt(totalMonthly * 1.25) + '/md.';
-  document.getElementById('leaseTotal').textContent = fmt(totalMonthly * 1.25) + '/md. (inkl. moms)';
+  // FOERSTEGANGSYDELSE OG TOTALOMKOSTNING.
+  // Totalen laases: total = (afgift/rente pr. md. uden udbetaling) x antal maaneder.
+  // Naar foerstegangsydelsen aendres, fordeles den samme total blot anderledes —
+  // det er praecis den afvejning en leasingtager staar i. Bemaerk at et rigtigt
+  // leasingselskab typisk giver en let lavere total ved hoej udbetaling (mindre
+  // rentedel); her er totalen fastholdt, saa fordelingen kan aflaeses rent.
+  const totalCostExcl = totalMonthly * months;
+  const fyKr  = parseFloat(document.getElementById('foersteYdelseKr').value) || 0;
+  const fyPct = parseFloat(document.getElementById('foersteYdelsePct').value) || 0;
+  let foersteExcl = fyKr > 0 ? fyKr : exAfgiftValue * (fyPct/100);
+  foersteExcl = Math.min(Math.max(0, foersteExcl), totalCostExcl);   // kan ikke overstige totalen
+  const restMdr = Math.max(0, totalCostExcl - foersteExcl);
+  const nyMaanedlig = months > 0 ? restMdr / months : 0;
+
+  document.getElementById('lFoersteExcl').textContent = fmt(foersteExcl);
+  document.getElementById('lFoersteIncl').textContent = fmt(foersteExcl * 1.25);
+  document.getElementById('lTotalMonthlyExcl').textContent = fmt(nyMaanedlig) + '/md.';
+  document.getElementById('lTotalMonthlyIncl').textContent = fmt(nyMaanedlig * 1.25) + '/md.';
+  document.getElementById('lTotalCostExcl').textContent = fmt(totalCostExcl);
+  document.getElementById('lTotalCostIncl').textContent = fmt(totalCostExcl * 1.25);
+  document.getElementById('leaseTotal').textContent = fmt(nyMaanedlig * 1.25) + '/md. (inkl. moms)';
+
+  const sl = document.getElementById('sliderLabel');
+  if(sl) sl.textContent = (exAfgiftValue > 0 ? (foersteExcl/exAfgiftValue*100).toFixed(1) : '0') +
+    ' % af bilens værdi — ' + fmt(foersteExcl) + ' ekskl. moms';
+  const rk = document.getElementById('residualSourceNote');
+  if(rk && restKilde !== 'beregnet') rk.textContent = 'Restværdi sat manuelt (' + restKilde + '): ' + fmt(residual) + ' inkl. moms. Værktøjets egen beregning ville give ' + fmt(residualInfo.value) + '.';
 }
 
 // ---------------- Events ----------------
@@ -1991,6 +2050,26 @@ function eeaAutoOpslag(){
   const el = document.getElementById(id);
   if(el) el.addEventListener('input', eeaAutoOpslag);
 });
+// Slideren og de to foerstegangsydelses-felter styrer samme stoerrelse og holdes synkrone.
+// Traekkes slideren, nulstilles krone-feltet, saa procenten faar lov at bestemme —
+// ellers ville et gammelt kronebeloeb blokere for traekket uden nogen synlig grund.
+(function(){
+  const slider = document.getElementById('foersteYdelseSlider');
+  const pct    = document.getElementById('foersteYdelsePct');
+  const kr     = document.getElementById('foersteYdelseKr');
+  if(!slider || !pct || !kr) return;
+  slider.addEventListener('input', () => { pct.value = slider.value; kr.value = 0; renderAll(); });
+  pct.addEventListener('input', () => {
+    const v = parseFloat(pct.value);
+    if(!isNaN(v)) slider.value = Math.min(parseFloat(slider.max), Math.max(0, v));
+    kr.value = 0; renderAll();
+  });
+  kr.addEventListener('input', renderAll);
+  ['restManuel','vaerditabPct'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', renderAll);
+  });
+})();
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 document.getElementById('shareBtn').addEventListener('click', shareStateLink);
 document.getElementById('autoFetchBtn').addEventListener('click', autoFetch);
