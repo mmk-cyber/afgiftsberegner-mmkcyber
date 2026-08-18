@@ -612,8 +612,8 @@
         <input type="number" id="kmPrAar" value="20000" min="0" step="1000" title="Bruges til at fremskrive kilometerstanden til periodens udløb. Bilens hidtidige kørsel bruges ikke — leasingaftalen sætter loftet.">
       </div>
       <div class="field">
-        <label for="avancePct">Leasingselskabets avance (%)</label>
-        <input type="number" id="avancePct" value="0" min="0" max="100" step="0.5" title="Lægges oven på kostprisen (værditab + afgift + rente).">
+        <label for="avancePct">Leasingselskabets avance (kr. eller %)</label>
+        <input type="text" id="avancePct" value="" placeholder="fx 15000 eller 12%" title="Skriv enten et kronebeløb eller en procent. Sæt %-tegn efter tallet, når du mener procent — fx «12%». Uden %-tegn læses tallet som kroner. Lægges oven på kostprisen (værditab + afgift + rente).">
       </div>
       <div class="field" style="grid-column:3/-1;">
         <label for="restManuel">Restværdi, manuel (kr. ekskl. moms og afgift)</label>
@@ -1419,6 +1419,21 @@ function getComparisons(){
   })).filter(c => c.pris > 0);
 }
 
+// ---------- Dansk taltolkning ----------
+// "12.500" er tolv tusind fem hundrede, "12,5" er tolv en halv. Punktum laeses derfor kun som
+// tusindtalsseparator, naar det staar foran praecis tre cifre; ellers som decimaltegn.
+function parseDkTal(s){
+  let t = String(s == null ? '' : s).replace(/[^0-9.,-]/g, '').replace(/[.,-]+$/, '');
+  if(!t) return 0;
+  if(t.indexOf(',') >= 0){
+    t = t.replace(/\./g, '').replace(',', '.');     // komma er decimaltegn -> punktum er tusinder
+  } else if(/^\d{1,3}(\.\d{3})+$/.test(t)){
+    t = t.replace(/\./g, '');                        // rene tusindtalsgrupper
+  }
+  const n = parseFloat(t);
+  return isFinite(n) ? n : 0;
+}
+
 // ---------- Restvaerdi ud fra annoncer uden afgift og uden moms ----------
 // Samme fremgangsmaade som handelsprisen: gennemsnit af annoncerne, dernaest km-regulering
 // op eller ned til bilens kilometerstand ved periodens udloeb. Der traekkes IKKE 5 %
@@ -1958,8 +1973,14 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   // perioden er den stoerste post, og uden den ville en foerstegangsydelse paa 20 % af bilens
   // vaerdi overstige totalen mange gange og presse maanedsydelsen til nul.
   const kostprisExcl = valueLossExcl + totalMonthly * months;
-  const avancePct = parseFloat(document.getElementById('avancePct').value) || 0;
-  const avanceKr  = kostprisExcl * (avancePct/100);
+  // AVANCE I KRONER ELLER PROCENT I SAMME FELT.
+  // Et %-tegn efter tallet betyder procent af kostprisen; uden %-tegn laeses tallet som kroner.
+  // Danske tal accepteres: komma som decimaltegn og punktum som tusindtalsseparator.
+  const avanceInput = (document.getElementById('avancePct').value || '').trim();
+  const avanceErPct = /%\s*$/.test(avanceInput);
+  const avanceTal   = parseDkTal(avanceInput);
+  const avanceKr    = avanceErPct ? kostprisExcl * (avanceTal/100) : avanceTal;
+  const avancePct   = avanceErPct ? avanceTal : (kostprisExcl > 0 ? avanceKr/kostprisExcl*100 : 0);
   const totalCostExcl = kostprisExcl + avanceKr;
   const fyKr  = parseFloat(document.getElementById('foersteYdelseKr').value) || 0;
   const fyPct = parseFloat(document.getElementById('foersteYdelsePct').value) || 0;
@@ -2000,7 +2021,7 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   document.getElementById('lTotalMonthlyIncl').textContent = fmt(nyMaanedlig * 1.25) + '/md.';
   document.getElementById('lKostpris').textContent = fmt(kostprisExcl);
   document.getElementById('lKostprisIncl').textContent = fmt(kostprisExcl * 1.25);
-  document.getElementById('lAvance').textContent = fmt(avanceKr) + (avancePct ? ' (' + avancePct + ' %)' : '');
+  document.getElementById('lAvance').textContent = fmt(avanceKr) + (avancePct ? ' (' + avancePct.toFixed(1).replace('.',',') + ' %)' : '');
   document.getElementById('lAvanceIncl').textContent = fmt(avanceKr * 1.25);
   document.getElementById('lTotalCostExcl').textContent = fmt(totalCostExcl);
   document.getElementById('lTotalCostIncl').textContent = fmt(totalCostExcl * 1.25);
