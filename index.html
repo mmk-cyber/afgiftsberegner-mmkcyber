@@ -597,7 +597,7 @@
         <input type="number" id="restRente" value="3.8" min="0" step="0.1">
       </div>
       <div class="field">
-        <label for="foersteYdelsePct">Førstegangsydelse (% af bilens værdi)</label>
+        <label for="foersteYdelsePct">Førstegangsydelse (% af samlede omkostninger)</label>
         <input type="number" id="foersteYdelsePct" value="20" min="0" max="100" step="0.5">
       </div>
       <div class="field">
@@ -1820,9 +1820,16 @@ function renderAll(){
   // MANUEL RESTVAERDI. Et konkret markedsopslag slaar altid en model: restvaerdien er
   // markedsprisen for en tilsvarende bil paa det tidspunkt, leasingperioden udloeber.
   // Prioritet: 1) manuelt indtastet restvaerdi, 2) vaerktoejets egen 3-metode-model.
+  // Markedsprisen er INKL. registreringsafgift, mens vaerditabet skal regnes paa vaerdien UDEN
+  // afgift: i flexleasing betales afgiften saerskilt og forholdsmaessigt efter §3b, saa
+  // leasingselskabets kapital er bundet i ex-afgift-vaerdien. Uden denne omregning
+  // sammenlignes en pris inkl. afgift med et grundlag uden afgift, og vaerditabet bliver negativt.
   const restManuel = parseFloat(document.getElementById('restManuel').value) || 0;
   let residual = residualInfo.value, restKilde = 'beregnet';
-  if(restManuel > 0){ residual = restManuel; restKilde = 'markedsopslag'; }
+  if(restManuel > 0){
+    residual = solveExAfgiftValue(restManuel, co2Eff, fuel, scale);
+    restKilde = 'markedsopslag ' + fmt(restManuel) + ' inkl. afgift';
+  }
 
   const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente);
   const totalMonthly = fm.avgMonthly;
@@ -1857,7 +1864,10 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   const totalCostExcl = kostprisExcl + avanceKr;
   const fyKr  = parseFloat(document.getElementById('foersteYdelseKr').value) || 0;
   const fyPct = parseFloat(document.getElementById('foersteYdelsePct').value) || 0;
-  const oensketFoerste = fyKr > 0 ? fyKr : exAfgiftValue * (fyPct/100);
+  // Procenten regnes af de SAMLEDE omkostninger, ikke af bilens vaerdi. En foerstegangsydelse
+  // paa 20 % af bilens vaerdi ville paa en 12-maaneders aftale vaere flere gange stoerre end
+  // hele leasingomkostningen og blive klippet til nul hver gang.
+  const oensketFoerste = fyKr > 0 ? fyKr : totalCostExcl * (fyPct/100);
   const foersteExcl = Math.min(Math.max(0, oensketFoerste), totalCostExcl);
   const klippet = oensketFoerste > totalCostExcl + 1;
   const restMdr = Math.max(0, totalCostExcl - foersteExcl);
@@ -1868,11 +1878,7 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   // den blev klippet med det samme og ikke flyttede noget. Loftet saettes derfor der, hvor
   // maanedsydelsen rammer nul, saa traekket altid har en synlig effekt.
   const sliderEl = document.getElementById('foersteYdelseSlider');
-  if(sliderEl && exAfgiftValue > 0 && totalCostExcl > 0){
-    const maxPct = Math.max(1, Math.floor(totalCostExcl / exAfgiftValue * 100));
-    sliderEl.max = String(maxPct);
-    if(parseFloat(sliderEl.value) > maxPct) sliderEl.value = String(maxPct);
-  }
+  if(sliderEl) sliderEl.max = '100';
 
   // ADVARSLER. To ting kan goere billedet misvisende, og begge skal siges hoejt.
   const advEl = document.getElementById('flexAdvarsel');
@@ -1903,8 +1909,8 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   document.getElementById('leaseTotal').textContent = fmt(nyMaanedlig * 1.25) + '/md. (inkl. moms)';
 
   const sl = document.getElementById('sliderLabel');
-  if(sl) sl.textContent = (exAfgiftValue > 0 ? (foersteExcl/exAfgiftValue*100).toFixed(1) : '0') +
-    ' % af bilens værdi — ' + fmt(foersteExcl) + ' ekskl. moms';
+  if(sl) sl.textContent = (totalCostExcl > 0 ? (foersteExcl/totalCostExcl*100).toFixed(1) : '0') +
+    ' % af de samlede omkostninger — ' + fmt(foersteExcl) + ' ekskl. moms';
   const rk = document.getElementById('residualSourceNote');
   if(rk && restKilde !== 'beregnet') rk.textContent = 'Restværdi sat manuelt (' + restKilde + '): ' + fmt(residual) + ' inkl. moms. Værktøjets egen beregning ville give ' + fmt(residualInfo.value) + '.';
 }
