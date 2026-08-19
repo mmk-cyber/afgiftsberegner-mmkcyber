@@ -326,6 +326,12 @@
   - Alle priser i tabellen skal være TOTALPRISER inkl. moms og afgift — IKKE "Uden afgift"-
     eller "Engros/CVR"-markerede annoncer. Hvis kun ekskl.-afgift-priser findes, er det ikke
     godt nok i sig selv — søg videre eller brug bilopslag.nu i stedet, fremfor at gætte/konvertere.
+  - RESTVÆRDI-TABELLEN ER EN ANDEN SAG END OVENSTÅENDE. Til restværdien ved leasingperiodens
+    udløb skal der bruges priser UDEN afgift og UDEN moms, og de slås op på BILBASENS
+    LEASING-FANE (pricetype=Leasing), ikke Køb-fanen. Køb-fanens totalpriser hører til
+    handelsprisen; leasingfanens biler er dem, der handles uden afgift og moms, og det er
+    dét niveau, leasingselskabets kapital er bundet i. Match på alder og km ved PERIODENS
+    UDLØB (dagens km + aftalt årlig kørsel), ikke på bilens stand i dag.
   - VIGTIGT, LÆRT AF FEJL I PRAKSIS: Bilbasens/DBA's søgeresultat-KORT viser ikke altid
     pålideligt en "(Uden afgift)"/"(Engros/CVR)"-markering, selvom annoncen rent faktisk er
     det — teksten står nogle gange kun i selve annoncens BESKRIVELSE (fx "INCL. moms/Uden
@@ -630,7 +636,7 @@
       <p class="footnote" style="margin:6px 0 0;">De samlede omkostninger holdes fast, mens du trækker: jo større førstegangsydelse, jo mindre bliver den månedlige ydelse. Bemærk at et rigtigt leasingselskab typisk vil give en <em>lidt</em> lavere totalpris ved høj udbetaling, fordi rentedelen falder — her er totalen låst, så du kan se den rene fordeling.</p>
     </div>
     <h3 style="margin:20px 0 4px;font-size:15px;">Restværdi — annoncer uden afgift og uden moms</h3>
-    <p class="sub" style="margin-top:0;">Restværdien findes på præcis samme måde som handelsprisen: gennemsnit af sammenlignelige annoncer, reguleret for kilometer. Forskellen er, at priserne her er <strong>uden registreringsafgift og uden moms</strong> — det er sådan biler handles mellem forhandlere, og det er den værdi, leasingselskabets kapital er bundet i. Find dem på Bilbasen under annoncer mærket «Uden afgift». Bilen skal matches på alder og km ved <em>periodens udløb</em>, ikke i dag.</p>
+    <p class="sub" style="margin-top:0;">Restværdien findes på præcis samme måde som handelsprisen: gennemsnit af sammenlignelige annoncer, reguleret for kilometer. Forskellen er, at priserne her er <strong>uden registreringsafgift og uden moms</strong> — det er sådan biler handles mellem forhandlere, og det er den værdi, leasingselskabets kapital er bundet i. Slå dem op på <strong>Bilbasens Leasing-fane</strong> — ikke Køb-fanen. Leasingannoncerne er dem, der handles uden afgift og moms, og det er dét prisniveau, restværdien skal måles på. Bilen skal matches på alder og km ved <em>periodens udløb</em>, ikke i dag.</p>
     <div class="tablewrap">
     <table id="restTable">
       <thead><tr>
@@ -1932,7 +1938,7 @@ function renderAll(){
   // markedsprisen for en tilsvarende bil paa det tidspunkt, leasingperioden udloeber.
   // Prioritet: 1) manuelt indtastet restvaerdi, 2) vaerktoejets egen 3-metode-model.
   // Restvaerdien tastes ind som den handles mellem forhandlere: UDEN registreringsafgift og
-  // UDEN moms — det er de annoncer, der er maerket "Uden afgift". Internt regnes der i samme
+  // UDEN moms — de findes paa Bilbasens LEASING-fane, ikke Koeb-fanen. Internt regnes der i samme
   // enhed som den afgiftspligtige vaerdi, altsaa inkl. moms men uden afgift, saa der ganges
   // med 1,25. Uden det ville et tal ekskl. moms blive sammenlignet med et grundlag inkl. moms
   // og give et vaerditab, der er 25 % for stort.
