@@ -528,6 +528,17 @@
         <input type="number" id="nypris" value="0" min="0" step="1000" placeholder="fx 1500000">
       </div>
       <div class="field">
+        <label for="koebspris">Din købspris i udlandet (kr.)</label>
+        <input type="number" id="koebspris" value="0" min="0" step="1000" placeholder="fx 382100">
+      </div>
+      <div class="field">
+        <label for="koebsprisBasis">Købsprisens grundlag</label>
+        <select id="koebsprisBasis">
+          <option value="exmoms">Ekskl. moms (netto)</option>
+          <option value="inklmoms">Inkl. moms / differenceberegnet</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="stand">Vedligeholdelsesstand</label>
         <select id="stand">
           <option value="middel">Middel (ingen regulering)</option>
@@ -692,7 +703,10 @@
       <h3>Kontant betaling</h3>
       <div class="big" id="kontantTotal">0 kr.</div>
 
-      <div class="line"><span>Afgiftspligtig værdi (ekskl. afgift)</span><span id="kExAfgift">–</span></div>
+      <div class="line"><span>Afgiftspligtig værdi (inkl. moms, ekskl. registreringsafgift)</span><span id="kExAfgift">–</span></div>
+      <div class="line" style="opacity:.75;"><span>… samme værdi ekskl. moms</span><span id="kExAfgiftExMoms">–</span></div>
+      <div class="line" id="koebLinje" style="display:none;"><span id="koebLabel">Din købspris</span><span id="kKoeb">–</span></div>
+      <div class="line" id="marginLinje" style="display:none;"><span><strong>Margin mod afgiftsgrundlaget</strong><br><span class="footnote" style="opacity:.8;">begge tal ekskl. moms</span></span><span id="kMargin">–</span></div>
 
       <div class="line" style="opacity:.75;"><span id="kB1Label">25% af de første 76.400 kr.</span><span id="kB1">–</span></div>
       <div class="line" style="opacity:.75;"><span id="kB2Label">85% af 76.400–237.400 kr.</span><span id="kB2">–</span></div>
@@ -1814,6 +1828,8 @@ function serializeState(){
     kmPrAar: _v('kmPrAar'),
     avancePct: _v('avancePct'),
     restManuel: _v('restManuel'),
+    koebspris: _v('koebspris'),
+    koebsprisBasis: _v('koebsprisBasis'),
     comps,
     rest,
     udstyr: Array.from(document.querySelectorAll('#udstyrBody tr')).map(tr => ({
@@ -1861,6 +1877,8 @@ function applyState(state){
   _setIf('kmPrAar', state.kmPrAar);
   _setIf('avancePct', state.avancePct);
   _setIf('restManuel', state.restManuel);
+  _setIf('koebspris', state.koebspris);
+  _setIf('koebsprisBasis', state.koebsprisBasis);
 
   document.getElementById('compBody').innerHTML = '';
   document.getElementById('udstyrBody').innerHTML = '';
@@ -1994,6 +2012,34 @@ function renderAll(){
   // Kontant
   const r = computeAfgift(exAfgiftValue, co2Eff, fuel, scale);
   document.getElementById('kExAfgift').textContent = fmt(exAfgiftValue);
+
+  // MOMSFAELDEN. Den afgiftspligtige vaerdi er INKL. moms og EKSKL. registreringsafgift.
+  // En koebspris fra udlandet er typisk EKSKL. moms. Saetter man de to tal op mod hinanden
+  // uden at omregne, ser en daarlig handel ud som en god — forskellen er en faktor 1,25.
+  // Derfor regner vaerktoejet selv, og skriver grundlaget paa begge tal.
+  const afgGrundlagExMoms = exAfgiftValue / 1.25;
+  const exEl = document.getElementById('kExAfgiftExMoms');
+  if(exEl) exEl.textContent = fmt(afgGrundlagExMoms);
+  const koebRaa = parseFloat((document.getElementById('koebspris')||{}).value) || 0;
+  const koebBasis = ((document.getElementById('koebsprisBasis')||{}).value) || 'exmoms';
+  const koebExMoms = koebBasis === 'inklmoms' ? koebRaa/1.25 : koebRaa;
+  const kl = document.getElementById('koebLinje'), ml = document.getElementById('marginLinje');
+  if(koebRaa > 0 && exAfgiftValue > 0){
+    if(kl) kl.style.display = '';
+    if(ml) ml.style.display = '';
+    document.getElementById('koebLabel').textContent =
+      'Din købspris' + (koebBasis === 'inklmoms' ? ' (indtastet inkl. moms → ekskl. moms)' : ' (ekskl. moms)');
+    document.getElementById('kKoeb').textContent = fmt(koebExMoms);
+    const margin = afgGrundlagExMoms - koebExMoms;
+    const pct = koebExMoms > 0 ? margin/koebExMoms*100 : 0;
+    const mEl = document.getElementById('kMargin');
+    mEl.textContent = (margin >= 0 ? '+' : '−') + fmt(Math.abs(margin)) + ' (' + (margin>=0?'':'−') + Math.abs(pct).toFixed(1) + ' %)';
+    mEl.style.color = margin >= 0 ? '#0a7d33' : '#b3261e';
+    mEl.style.fontWeight = '700';
+  } else {
+    if(kl) kl.style.display = 'none';
+    if(ml) ml.style.display = 'none';
+  }
 
   document.getElementById('kB1').textContent = fmt(r.valueTaxBands.b1tax);
   document.getElementById('kB2').textContent = fmt(r.valueTaxBands.b2tax);
@@ -2389,6 +2435,10 @@ document.querySelectorAll('#fuelSeg button').forEach(btn=>{
   });
 });
 
+['koebspris','koebsprisBasis'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el){ el.addEventListener('input', renderAll); el.addEventListener('change', renderAll); }
+});
 ['co2','ageMonths','kmStand','months','restRente','nypris','kmPrAar'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderAll);
 });
