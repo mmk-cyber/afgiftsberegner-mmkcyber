@@ -1558,13 +1558,23 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   //  - Privatannoncer: hverken tillaeg eller fradrag — reg.udgifter er irrelevante privat.
   //  - Annoncer uden for prismaerkningsbekendtgoerelsen (varebil over 2 t, autocamper, bus):
   //    traekkes kun hvis det positivt fremgaar af annoncen. Indtast da beloebet manuelt.
+  // EN VURDERING ER IKKE EN ANNONCE.
+  // Raekker med kilde bilopslag.nu er Motorstyrelsens egne afgoerelser: handelsprisen dér er
+  // allerede faerdigreguleret. Derfor hverken 5 % annoncefradrag (rabatten er indregnet) eller
+  // fradrag for registreringsudgifter (de indgik aldrig). Og de maa ikke trimmes vaek som
+  // yderpunkter — udvaelgelseskriteriet om billigste/dyreste retter sig mod udbudsstoej i
+  // annoncer, ikke mod myndighedens egne tal.
+  const erVurdering = c => (c.kilde || '') === 'bilopslag.nu';
   const adj = comparisons.map(c => {
-    const auto = c.annoncetype === 'forhandler' ? RATES.regUdgifterBil : 0;
+    const vurd = erVurdering(c);
+    const auto = (!vurd && c.annoncetype === 'forhandler') ? RATES.regUdgifterBil : 0;
     const regU = (c.regUdgifter !== undefined && c.regUdgifter !== null && c.regUdgifter !== '')
                    ? c.regUdgifter : auto;
+    const netto = Math.max(0, c.pris - regU);
     return Object.assign({}, c, {
+      erVurdering: vurd,
       regUdgifterBrugt: regU,
-      prisJust: Math.max(0, c.pris - regU) * (1 - RATES.annonceFradragPct/100)
+      prisJust: vurd ? netto : netto * (1 - RATES.annonceFradragPct/100)
     });
   });
 
@@ -1620,29 +1630,40 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   //
   // "Saa vidt muligt" betyder, at det er en bloed regel: vaerktoejet udelader automatisk, men
   // viser altid hvilke annoncer der er taget ud, saa valget kan efterproeves og omgoeres.
-  const sorted = adj.slice().sort((a,b)=>a.prisJust-b.prisJust);
-  let used = sorted, excluded = [];
-  if(sorted.length >= 5){
-    excluded = [sorted[0], sorted[sorted.length-1]];
-    used = sorted.slice(1, -1);
+  const vurderinger = adj.filter(c => c.erVurdering);
+  const annoncer    = adj.filter(c => !c.erVurdering);
+  let used = adj, excluded = [];
+  if(annoncer.length >= 5){
+    const s = annoncer.slice().sort((a,b)=>a.prisJust-b.prisJust);
+    excluded = [s[0], s[s.length-1]];
+    used = vurderinger.concat(s.slice(1, -1));
   }
   let excludedNote = '';
-  const tier = used.length < 3 ? 'thin' : (sorted.length >= 5 ? 'ok' : 'mild');
+  const tier = used.length < 3 ? 'thin' : (annoncer.length >= 5 || vurderinger.length >= 3 ? 'ok' : 'mild');
+  const vNote = vurderinger.length
+    ? ` ${vurderinger.length} vurdering(er) fra bilopslag.nu indgår altid — de er myndighedens egne handelspriser og hverken fradrages eller trimmes.`
+    : '';
   if(excluded.length){
     excludedNote = `Billigste (${Math.round(excluded[0].pris).toLocaleString('da-DK')} kr.) og dyreste ` +
       `(${Math.round(excluded[1].pris).toLocaleString('da-DK')} kr.) annonce er udeladt, jf. Motorstyrelsens ` +
-      `udvælgelseskriterier. ${used.length} annoncer indgår i gennemsnittet.`;
-  } else if(sorted.length >= 3){
-    excludedNote = `Alle ${used.length} annoncer indgår. Billigste og dyreste udelades først fra 5 annoncer — ` +
-      `med færre ville hovedreglen om mindst 3 annoncer blive brudt. Find gerne flere annoncer, så yderpunkterne kan tages ud.`;
+      `udvælgelseskriterier. ${used.length} poster indgår i gennemsnittet.` + vNote;
+  } else if(adj.length >= 3){
+    excludedNote = `Alle ${used.length} poster indgår.` +
+      (annoncer.length ? ` Billigste og dyreste annonce udelades først fra 5 annoncer — med færre ville hovedreglen om mindst 3 blive brudt.` : '') + vNote;
   }
 
   // Trin 2: gennemsnit af de justerede priser = handelsprisniveau.
   const niveau = used.reduce((s,c)=>s+c.prisJust,0) / used.length;
   const regSum = used.reduce((s,c)=>s+(c.regUdgifterBrugt||0),0);
-  const steps = [{ label:`Gennemsnit af ${used.length} annonce(r)` +
-    (regSum ? ` efter fradrag af registreringsudgifter` : '') +
-    ` og −${RATES.annonceFradragPct}% annoncefradrag`, value: niveau }];
+  // Etiketten skal beskrive hvad der FAKTISK er gjort. Vurderinger faar intet fradrag,
+  // saa de maa ikke staa under en overskrift der lover et annoncefradrag.
+  const antalAnn = used.filter(c => !c.erVurdering).length;
+  const antalVur = used.length - antalAnn;
+  const dele = [];
+  if(antalAnn) dele.push(`${antalAnn} annonce(r)` + (regSum ? ` efter fradrag af registreringsudgifter` : '') +
+                         ` og −${RATES.annonceFradragPct}% annoncefradrag`);
+  if(antalVur) dele.push(`${antalVur} vurdering(er) fra bilopslag.nu uden fradrag`);
+  const steps = [{ label:`Gennemsnit af ` + dele.join(' + '), value: niveau }];
 
   // Trin 3: km-regulering mod annoncernes gennemsnitlige km-stand.
   const withKm = used.filter(c => c.km > 0);
