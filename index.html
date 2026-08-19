@@ -1558,12 +1558,18 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   //  - Privatannoncer: hverken tillaeg eller fradrag — reg.udgifter er irrelevante privat.
   //  - Annoncer uden for prismaerkningsbekendtgoerelsen (varebil over 2 t, autocamper, bus):
   //    traekkes kun hvis det positivt fremgaar af annoncen. Indtast da beloebet manuelt.
-  // EN VURDERING ER IKKE EN ANNONCE.
-  // Raekker med kilde bilopslag.nu er Motorstyrelsens egne afgoerelser: handelsprisen dér er
-  // allerede faerdigreguleret. Derfor hverken 5 % annoncefradrag (rabatten er indregnet) eller
-  // fradrag for registreringsudgifter (de indgik aldrig). Og de maa ikke trimmes vaek som
-  // yderpunkter — udvaelgelseskriteriet om billigste/dyreste retter sig mod udbudsstoej i
-  // annoncer, ikke mod myndighedens egne tal.
+  // EN VAERDIFASTSAETTELSE ER IKKE EN ANNONCE.
+  // Raekker med kilde bilopslag.nu er SELVANMELDERES egne vaerdifastsaettelser — andre
+  // forhandlere og leasingselskaber saetter selv vaerdien, og Motorstyrelsen kontrollerer
+  // kun stikproevevis bagefter. Det er altsaa ikke myndighedsafgoerelser.
+  // Men det ER en faerdig handelspris: den der indberettede den, har allerede trukket de
+  // 5 % annoncefradrag og set bort fra registreringsudgifter. Trak vi dem igen, ville de
+  // taelle to gange. Derfor indgaar tallet uaendret.
+  // De trimmes heller ikke som yderpunkter — men bemaerk at begrundelsen her er praktisk,
+  // ikke juridisk: paa sjaeldne biler er de ofte det eneste danske grundlag der findes.
+  // VAER OPMAERKSOM: en selvanmelder har en interesse i en LAV vaerdi, fordi afgiften
+  // foelger med ned. Grundlaget kan derfor vaere systematisk lavt sat, og Motorstyrelsen
+  // kan ved kontrol saette vaerdien op. Regn ikke med at tallet er et loft.
   const erVurdering = c => (c.kilde || '') === 'bilopslag.nu';
   const adj = comparisons.map(c => {
     const vurd = erVurdering(c);
@@ -1641,7 +1647,7 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   let excludedNote = '';
   const tier = used.length < 3 ? 'thin' : (annoncer.length >= 5 || vurderinger.length >= 3 ? 'ok' : 'mild');
   const vNote = vurderinger.length
-    ? ` ${vurderinger.length} vurdering(er) fra bilopslag.nu indgår altid — de er myndighedens egne handelspriser og hverken fradrages eller trimmes.`
+    ? ` ${vurderinger.length} værdifastsættelse(r) fra bilopslag.nu indgår altid — det er selvanmelderes egne tal, ikke myndighedsafgørelser. De er allerede færdige handelspriser, så de hverken fradrages eller trimmes. Bemærk at en selvanmelder har interesse i en lav værdi, så grundlaget kan være sat lavt.`
     : '';
   if(excluded.length){
     excludedNote = `Billigste (${Math.round(excluded[0].pris).toLocaleString('da-DK')} kr.) og dyreste ` +
@@ -1662,7 +1668,7 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   const dele = [];
   if(antalAnn) dele.push(`${antalAnn} annonce(r)` + (regSum ? ` efter fradrag af registreringsudgifter` : '') +
                          ` og −${RATES.annonceFradragPct}% annoncefradrag`);
-  if(antalVur) dele.push(`${antalVur} vurdering(er) fra bilopslag.nu uden fradrag`);
+  if(antalVur) dele.push(`${antalVur} værdifastsættelse(r) fra bilopslag.nu (selvanmelder, uden fradrag)`);
   const steps = [{ label:`Gennemsnit af ` + dele.join(' + '), value: niveau }];
 
   // Trin 3: km-regulering mod annoncernes gennemsnitlige km-stand.
