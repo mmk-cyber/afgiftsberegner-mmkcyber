@@ -136,7 +136,7 @@
     margin:0; background:var(--paper); color:var(--ink);
     font-family:var(--sans); line-height:1.55; font-size:15px;
   }
-  .wrap{max-width:960px; margin:0 auto; padding:48px 28px 96px;}
+  .wrap{max-width:1320px; margin:0 auto; padding:48px 28px 96px;}
   header.masthead{
     border-bottom:2px solid var(--ink); padding-bottom:22px; margin-bottom:36px;
     display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap;
@@ -344,6 +344,18 @@
     KONSEKVENS: en restværdi fra en aftale med anden løbetid end sagens egen MÅ IKKE bruges
     direkte — den beskriver et andet køretøj på et andet tidspunkt. Brug kun annoncer med
     samme løbetid, eller udelad dem.
+  - SAMMENLIGN ALDRIG MÅNEDSYDELSER DIREKTE. Det eneste sammenlignelige tal er KUNDENS
+    SAMLEDE OMKOSTNING: førstegangsydelse + (løbetid x månedlig ydelse), ved samme løbetid
+    og samme kilometergrænse. Marginen er derefter forskellen mellem den total og vores egen
+    kostpris (værditab + §3b-afgift + rentetillæg).
+    FAKTISK FEJL, BEGÅET TO GANGE I PRAKSIS: på BMW M850i blev vores 5.652 kr./md. holdt op
+    mod markedets 5.999 kr./md. og marginen kaldt 4.164 kr. for et helt år. Men vores tal
+    havde 16.957 kr. i førstegangsydelse, markedets havde 60.000 kr. Regnet på totalen:
+    kostpris 84.785 kr. mod markedets 131.988 kr. = 47.203 kr. i margin, svarende til 55,7 %.
+    Samme fejl skete på BMW X5 45e, hvor ydelserne blev sammenlignet uden at kontrollere
+    kilometergrænsen (43.649 km/år mod markedets ~15-20.000 km/år).
+    REGEL: før en markedsydelse bruges til noget som helst, skal løbetid, førstegangsydelse
+    og kilometergrænse være aflæst og gjort ens. Ét tal mod ét tal er meningsløst.
   - VIGTIGT, LÆRT AF FEJL I PRAKSIS: Bilbasens/DBA's søgeresultat-KORT viser ikke altid
     pålideligt en "(Uden afgift)"/"(Engros/CVR)"-markering, selvom annoncen rent faktisk er
     det — teksten står nogle gange kun i selve annoncens BESKRIVELSE (fx "INCL. moms/Uden
@@ -648,7 +660,10 @@
         <th style="width:130px;">Pris u. afgift/moms</th>
         <th style="width:110px;">Årgang</th>
         <th style="width:110px;">Km</th>
-        <th style="width:100px;">kW</th>
+        <th style="width:90px;">kW</th>
+        <th style="width:95px;">Løbetid (mdr.)</th>
+        <th style="width:125px;">Førstegangsydelse</th>
+        <th style="width:115px;">Md. ydelse</th>
         <th style="width:120px;">Link</th>
         <th class="col-remove"></th>
       </tr></thead>
@@ -704,22 +719,24 @@
       <h3>Flexleasing (§3b, forholdsmæssig afgift)</h3>
       <div class="big" id="leaseTotal">0 kr./md.</div>
       <div class="line"><span>Afgift/rente, gnsn. pr. md. (ekskl. moms)</span><span id="lAfgiftMonthly">–</span></div>
-      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;opacity:.65;font-size:12.5px;">
-        <span></span><span style="text-align:right;">Ekskl. moms</span><span style="text-align:right;">Inkl. moms</span></div>
-      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Værditab i leasingperioden</span><span id="lValueLoss" style="text-align:right;">–</span><span id="lValueLossIncl" style="text-align:right;">–</span></div>
-      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Førstegangsydelse</span><span id="lFoersteExcl" style="text-align:right;">–</span><span id="lFoersteIncl" style="text-align:right;">–</span></div>
-      <div class="line total" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Samlet ydelse pr. måned</span><span id="lTotalMonthlyExcl" style="text-align:right;">–</span><span id="lTotalMonthlyIncl" style="text-align:right;">–</span></div>
-      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Kostpris i perioden (værditab + afgift/rente)</span><span id="lKostpris" style="text-align:right;">–</span><span id="lKostprisIncl" style="text-align:right;">–</span></div>
-      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Avance</span><span id="lAvance" style="text-align:right;">–</span><span id="lAvanceIncl" style="text-align:right;">–</span></div>
-      <div class="line total" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Totale omkostninger i perioden</span><span id="lTotalCostExcl" style="text-align:right;">–</span><span id="lTotalCostIncl" style="text-align:right;">–</span></div>
-      <div class="line" style="display:grid;grid-template-columns:1fr 120px 120px;gap:10px;">
-        <span>Restværdi ved periodens udløb</span><span id="lResidual" style="text-align:right;">–</span><span id="lResidualIncl" style="text-align:right;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;opacity:.65;font-size:12.5px;">
+        <span></span><span style="text-align:right;">Ekskl. moms</span><span style="text-align:right;">Inkl. moms</span><span style="text-align:right;">Marked (gns.)</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Løbetid (mdr.)</span><span id="lMaaneder" style="text-align:right;">–</span><span></span><span id="mMaaneder" style="text-align:right;opacity:.75;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Værditab i leasingperioden</span><span id="lValueLoss" style="text-align:right;">–</span><span id="lValueLossIncl" style="text-align:right;">–</span><span></span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Førstegangsydelse</span><span id="lFoersteExcl" style="text-align:right;">–</span><span id="lFoersteIncl" style="text-align:right;">–</span><span id="mFoerste" style="text-align:right;opacity:.75;">–</span></div>
+      <div class="line total" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Samlet ydelse pr. måned</span><span id="lTotalMonthlyExcl" style="text-align:right;">–</span><span id="lTotalMonthlyIncl" style="text-align:right;">–</span><span id="mYdelse" style="text-align:right;opacity:.75;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Kostpris i perioden (værditab + afgift/rente)</span><span id="lKostpris" style="text-align:right;">–</span><span id="lKostprisIncl" style="text-align:right;">–</span><span></span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Avance</span><span id="lAvance" style="text-align:right;">–</span><span id="lAvanceIncl" style="text-align:right;">–</span><span></span></div>
+      <div class="line total" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Totale omkostninger i perioden</span><span id="lTotalCostExcl" style="text-align:right;">–</span><span id="lTotalCostIncl" style="text-align:right;">–</span><span id="mTotal" style="text-align:right;opacity:.75;">–</span></div>
+      <div class="line" style="display:grid;grid-template-columns:1fr 115px 115px 125px;gap:10px;">
+        <span>Restværdi ved periodens udløb</span><span id="lResidual" style="text-align:right;">–</span><span id="lResidualIncl" style="text-align:right;">–</span><span id="mRest" style="text-align:right;opacity:.75;">–</span></div>
       <p class="footnote" style="color:#B8C4D4;margin-top:10px;">Moms lægges på hele leasingydelsen, når den faktureres til en privat leasingtager. Erhvervsleasing faktureres typisk ekskl. moms, da momsen kan fratrækkes.</p>
     </div>
   </div>
@@ -1455,7 +1472,7 @@ function parseDkTal(s){
 // annoncefradrag, fordi det fradrag hoerer til Motorstyrelsens afgiftsvaerdiansaettelse af
 // detailannoncer — her er der tale om handelspriser mellem forhandlere uden afgift.
 let restRowId = 0;
-function addRestRow(kilde, beskrivelse, pris, dato, km, kw, link){
+function addRestRow(kilde, beskrivelse, pris, dato, km, kw, link, loebetid, foerste, ydelse){
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td><select class="r-kilde">
@@ -1469,6 +1486,9 @@ function addRestRow(kilde, beskrivelse, pris, dato, km, kw, link){
     <td><input type="text" class="r-dato" value="${dato||''}" placeholder="MM/ÅÅÅÅ"></td>
     <td><input type="number" class="r-km" value="${km||''}" step="1000" min="0"></td>
     <td><input type="number" class="r-kw" value="${kw||''}" step="1" min="0" placeholder="kW"></td>
+    <td><input type="number" class="r-loebetid" value="${loebetid||''}" step="1" min="0" placeholder="mdr."></td>
+    <td><input type="number" class="r-foerste" value="${foerste||''}" step="1000" min="0" placeholder="kr."></td>
+    <td><input type="number" class="r-ydelse" value="${ydelse||''}" step="100" min="0" placeholder="kr./md."></td>
     <td><div style="display:flex;gap:4px;align-items:center;"><input type="url" class="r-link" value="${link||''}" placeholder="link" style="flex:1;min-width:60px;"><button type="button" class="linkbtn no-print" title="Åbn link" onclick="const u=this.previousElementSibling.value; if(u) window.open(u,'_blank');">↗</button></div></td>
     <td><button type="button" class="rowbtn no-print" title="Fjern">×</button></td>`;
   document.getElementById('restBody').appendChild(tr);
@@ -1485,9 +1505,24 @@ function getRestComparisons(){
       dato: v('.r-dato'),
       km: parseFloat(v('.r-km')) || 0,
       kw: parseFloat(v('.r-kw')) || 0,
+      loebetid: parseFloat(v('.r-loebetid')) || 0,
+      foerste: parseFloat(v('.r-foerste')) || 0,
+      ydelse: parseFloat(v('.r-ydelse')) || 0,
       link: v('.r-link')
     };
   }).filter(c => c.pris > 0);
+}
+
+// MARKEDETS GENNEMSNIT. Kun annoncer med SAMME loebetid som sagen taeller med — en aftale
+// over 24 mdr. beskriver et andet forloeb og maa ikke blandes ind. Kundens samlede
+// omkostning er foerstegangsydelse + loebetid x maanedlig ydelse; det er det eneste tal,
+// der kan sammenlignes med vores egen total.
+function markedsGennemsnit(rows, months){
+  const b = rows.filter(c => c.loebetid === months && c.ydelse > 0);
+  if(!b.length) return { antal:0 };
+  const snit = f => b.reduce((s,c)=>s+f(c),0) / b.length;
+  const foerste = snit(c=>c.foerste), ydelse = snit(c=>c.ydelse), rest = snit(c=>c.pris);
+  return { antal:b.length, months, foerste, ydelse, rest, total: foerste + ydelse*months };
 }
 
 // Returnerer restvaerdien EKSKL. moms og afgift, plus en forklarende note.
@@ -2040,6 +2075,21 @@ document.getElementById('lResidualIncl').textContent = fmt(residual);
   document.getElementById('lAvanceIncl').textContent = fmt(avanceKr * 1.25);
   document.getElementById('lTotalCostExcl').textContent = fmt(totalCostExcl);
   document.getElementById('lTotalCostIncl').textContent = fmt(totalCostExcl * 1.25);
+
+  // MARKEDSKOLONNEN. Viser hvad markedet i gennemsnit tager for en tilsvarende aftale med
+  // SAMME loebetid. Alle tal er ekskl. moms, som leasingannoncerne oplyser dem.
+  const mk = markedsGennemsnit(getRestComparisons(), months);
+  const mSet = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  mSet('lMaaneder', String(months));
+  if(mk.antal > 0){
+    mSet('mMaaneder', mk.months + ' (' + mk.antal + ' stk.)');
+    mSet('mFoerste', fmt(mk.foerste));
+    mSet('mYdelse',  fmt(mk.ydelse) + '/md.');
+    mSet('mTotal',   fmt(mk.total));
+    mSet('mRest',    fmt(mk.rest));
+  } else {
+    ['mMaaneder','mFoerste','mYdelse','mTotal','mRest'].forEach(id => mSet(id, '–'));
+  }
 
   document.getElementById('leaseTotal').textContent = fmt(nyMaanedlig * 1.25) + '/md. (inkl. moms)';
 
