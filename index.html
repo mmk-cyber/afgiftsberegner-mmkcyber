@@ -1303,8 +1303,13 @@ function forholdsmaessigRate(ageMonths){
   return 0.005;
 }
 
-function computeForholdsmaessig(exAfgiftValue, startAgeMonths, leaseMonths, renteTillaegPct){
-    const r = computeAfgift(exAfgiftValue, parseFloat(document.getElementById('co2').value)||0, fuel);
+// §3b stk. 2 opkraever en procentdel "af den beregnede registreringsafgift". For en brugt bil
+// ER den beregnede afgift den, der foelger af §§ 4-10 — altsaa MED §4 stk. 6-nedsaettelsen.
+// Derfor skal samme scale og samme CO2-tal bruges her som i kontantberegningen; ellers regnes
+// leasingafgiften af et andet afgiftsgrundlag end det, bilen faktisk vaerdiansaettes til.
+function computeForholdsmaessig(exAfgiftValue, startAgeMonths, leaseMonths, renteTillaegPct, co2Eff, scale){
+    const c = (co2Eff === undefined || co2Eff === null) ? (parseFloat(document.getElementById('co2').value)||0) : co2Eff;
+    const r = computeAfgift(exAfgiftValue, c, fuel, scale);
     const fullTax = r.final;
     const alder = startAgeMonths;
     const periode = leaseMonths;
@@ -1946,7 +1951,7 @@ function renderAll(){
     ? restAds.note + (restManuel > 0 ? ' — men den manuelt indtastede restværdi bruges.' : '')
     : 'Ingen restværdi-annoncer indtastet. Værktøjet bruger sin egen værditabsmodel, som er et estimat og ikke et markedsopslag.';
 
-  const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente);
+  const fm = computeForholdsmaessig(exAfgiftValue, ageMonths, months, restRente, co2Eff, scale);
   const totalMonthly = fm.avgMonthly;
 
   document.getElementById('lAfgiftMonthly').textContent = fmt(fm.avgMonthly);
