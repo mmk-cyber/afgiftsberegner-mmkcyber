@@ -700,6 +700,7 @@
       <div class="line"><span>Værdiafgift i alt</span><span id="kValueTax">–</span></div>
 
       <div class="line" style="opacity:.75;"><span id="kScaleLabel">Nedsættelse af satser, jf. § 4 stk. 6</span><span id="kScale">–</span></div>
+      <div class="line" style="opacity:.75;"><span>Anvendt CO2 i beregningen</span><span id="kCo2Brugt">–</span></div>
       <div class="line" style="opacity:.75;"><span id="kCo2LowLabel">CO2-tillæg, 0–107 g/km</span><span id="kCo2Low">–</span></div>
       <div class="line" style="opacity:.75;"><span id="kCo2MidLabel">CO2-tillæg, 107–137 g/km</span><span id="kCo2Mid">–</span></div>
       <div class="line" style="opacity:.75;"><span id="kCo2HighLabel">CO2-tillæg, over 137 g/km</span><span id="kCo2High">–</span></div>
@@ -1359,12 +1360,6 @@ function computeForholdsmaessig(exAfgiftValue, startAgeMonths, leaseMonths, rent
     return { avgMonthly: totalPaid/periode, totalTaxPaid: totalPaid, restafgiftVedSlut: restafgift, fullTax, vaerditabPct };
 }
 
-function annuityWithBalloon(P, B, annualRatePct, n){
-  const i = annualRatePct/100/12;
-  if(i === 0) return (P-B)/n;
-  return (P - B/Math.pow(1+i,n)) * i / (1 - Math.pow(1+i,-n));
-}
-
 // ---------------- Sammenligningstabel ----------------
 let compRowId = 0;
 function addCompRow(kilde, beskrivelse, pris, dato, km, link, vaerdiUAfgift, regafgift, opkraevet, andelPct, annoncetype, regUdgifter, liggedage, kwComp){
@@ -1594,6 +1589,14 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   if(privat.length > adj.length/2) advarsler.push(`Flertallet af annoncerne er privatannoncer. Hovedreglen er forhandlerannoncer; privatannoncer kraever saerlige grunde (fx at bilen overvejende handles privat).`);
   const gamle = adj.filter(c => c.liggedage > RATES.liggetidMaxMdr*30);
   if(gamle.length) advarsler.push(`${gamle.length} annonce(r) har en liggetid over ${RATES.liggetidMaxMdr} måneder. Jf. Den juridiske vejledning medtages de som hovedregel ikke, medmindre annonceprisen er justeret nedad. Ved helt specielle køretøjer kan perioden dog udvides, fordi omsætningshastigheden er lav.`);
+  // VETERANKOERETOEJER (over 35 aar), jf. motorst.dk "Betaling af og satser":
+  // de faar hverken CO2-tillaeg eller bundfradrag, og afgiften maa ikke overstige en afgift
+  // beregnet af 75 % af nyprisen. Vaerktoejet regner dem som almindelige brugte biler og
+  // rammer derfor for hoejt. Reglen er ikke implementeret — i stedet siges det hoejt.
+  if(ageMonths >= 35*12) advarsler.push(`Bilen er over 35 år og er dermed et veterankøretøj. ` +
+    `Veteraner får hverken CO2-tillæg eller bundfradrag, og afgiften må ikke overstige en afgift beregnet af 75 % af nyprisen. ` +
+    `Værktøjet regner den som en almindelig brugt bil, så afgiften nedenfor er FOR HØJ. Brug den ikke uden manuel kontrol.`);
+
   if(adj.length < 3) advarsler.push(`Under 3 annoncer. Udgangspunktet er mindst 3 og gerne 5 eller flere; færre accepteres kun undtagelsesvist ved helt specielle køretøjer med meget sparsomt sammenligningsgrundlag.`);
 
   // ANTAL ANNONCER, jf. Den juridiske vejledning I.A.1.5.3.1.2:
@@ -1661,6 +1664,11 @@ function deriveMarketValue(comparisons, targetKm, ageMonths, stand, saerligAnven
   }
 
   // Trin 6: saerlig anvendelse (skiftende chauffoerer) -5 %, kun biler over 6 mdr.
+  // FORTOLKNINGSVALG: motorst.dk skriver "regulere HANDELSPRISNIVEAUET med -5 %", men om
+  // stand og saerlig anvendelse skal regnes af niveauet foer eller efter km- og udstyrs-
+  // regulering fremgaar kun af styrelsens billedeksempel. Vi regner af beloebet EFTER
+  // km/udstyr. Forskellen er faa hundrede kroner og rammer kun sager hvor stand != middel
+  // eller saerlig anvendelse = ja. Skal det aendres, er det de to linjer nedenfor.
   let saerligKr = 0;
   if(saerligAnvendelse && ageMonths >= 6){
     saerligKr = -handelspris * (RATES.saerligAnvendelsePct/100);
@@ -1741,14 +1749,25 @@ function serializeState(){
     liggedage: (tr.querySelector('.c-liggedage')||{}).value || '',
     dato: tr.querySelector('.c-dato').value,
     km: tr.querySelector('.c-km').value,
+    kwComp: (tr.querySelector('.c-kw')||{}).value || '',
     vaerdiUAfgift: tr.querySelector('.c-vaerdiuafgift').value,
     regafgift: tr.querySelector('.c-regafgift').value,
     opkraevet: tr.querySelector('.c-opkraevet').value,
     andelPct: tr.querySelector('.c-andel').value,
     link: tr.querySelector('.c-link').value,
   }));
+  // RESTVAERDI-ANNONCERNE OG LEASINGFELTERNE SKAL MED I LINKET.
+  // De laa udenfor foer, saa et delt link aabnede en sag der SAA komplet ud, men hvor hele
+  // markedskolonnen, avancen og foerstegangsydelsen var nulstillet. Tavst datatab.
+  const rest = Array.from(document.querySelectorAll('#restBody tr')).map(tr => {
+    const v = s => { const e = tr.querySelector(s); return e ? e.value : ''; };
+    return { kilde:v('.r-kilde'), beskrivelse:v('.r-beskrivelse'), pris:v('.r-pris'),
+             dato:v('.r-dato'), km:v('.r-km'), kw:v('.r-kw'), loebetid:v('.r-loebetid'),
+             foerste:v('.r-foerste'), ydelse:v('.r-ydelse'), link:v('.r-link') };
+  });
+  const _v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
   return {
-    v: 1,
+    v: 2,
     carName: document.getElementById('carName').value,
     sourceUrl: document.getElementById('sourceUrl').value,
     fuelDisplay: fuelDisplay,
@@ -1762,7 +1781,14 @@ function serializeState(){
     saerligAnvendelse: (document.getElementById('saerligAnvendelse')||{}).value || 'nej',
     months: document.getElementById('months').value,
     restRente: document.getElementById('restRente').value,
+    effektKw: _v('effektKw'),
+    foersteYdelsePct: _v('foersteYdelsePct'),
+    foersteYdelseKr: _v('foersteYdelseKr'),
+    kmPrAar: _v('kmPrAar'),
+    avancePct: _v('avancePct'),
+    restManuel: _v('restManuel'),
     comps,
+    rest,
     udstyr: Array.from(document.querySelectorAll('#udstyrBody tr')).map(tr => ({
       navn: tr.querySelector('.u-navn').value,
       nypris: tr.querySelector('.u-nypris').value,
@@ -1798,10 +1824,21 @@ function applyState(state){
   document.getElementById('restRente').value = state.restRente || '3.8';
   setFuelByDisplay(state.fuelDisplay || 'Benzin');
 
+  _set('effektKw', state.effektKw || '');
+  _set('foersteYdelsePct', state.foersteYdelsePct || '');
+  _set('foersteYdelseKr', state.foersteYdelseKr || '');
+  _set('foersteYdelseSlider', state.foersteYdelsePct || '');
+  _set('kmPrAar', state.kmPrAar || '');
+  _set('avancePct', state.avancePct || '');
+  _set('restManuel', state.restManuel || '');
+
   document.getElementById('compBody').innerHTML = '';
   document.getElementById('udstyrBody').innerHTML = '';
+  const restBody = document.getElementById('restBody');
+  if(restBody) restBody.innerHTML = '';
   (state.udstyr || []).forEach(u => addUdstyrRow(u.navn, u.nypris, u.type, u.retning));
-  (state.comps || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct, c.annoncetype, c.regUdgifter, c.liggedage));
+  (state.comps || []).forEach(c => addCompRow(c.kilde, c.beskrivelse, c.pris, c.dato, c.km, c.link, c.vaerdiUAfgift, c.regafgift, c.opkraevet, c.andelPct, c.annoncetype, c.regUdgifter, c.liggedage, c.kwComp));
+  (state.rest || []).forEach(r => addRestRow(r.kilde, r.beskrivelse, r.pris, r.dato, r.km, r.kw, r.link, r.loebetid, r.foerste, r.ydelse));
 }
 
 function loadStateFromHash(){
@@ -1942,6 +1979,17 @@ function renderAll(){
   document.getElementById('kCo2Mid').textContent  = fmt(r.co2Bands.midTax);
   document.getElementById('kCo2High').textContent = fmt(r.co2Bands.highTax);
   document.getElementById('kCo2').textContent = fmt(r.co2Surcharge);
+  // Vis ALTID hvilket CO2-tal beregningen rent faktisk brugte. Et felt kan vise ét tal,
+  // mens beregningen koerer paa et andet — det skete 19-08-2026 (feltet sagde 224, afgiften
+  // var regnet af 251). Naar tallet staar i resultatet, kan det ikke gemme sig igen.
+  const co2BrugtEl = document.getElementById('kCo2Brugt');
+  if(co2BrugtEl){
+    const raa = parseFloat(document.getElementById('co2').value) || 0;
+    const omregnet = Math.abs(co2Eff - raa) > 0.05;
+    co2BrugtEl.textContent = (fuel === 'ev')
+      ? 'elbil — intet CO2-tillæg'
+      : Math.round(co2Eff*10)/10 + ' g/km' + (omregnet ? ` (NEDC ${raa} × ${RATES.nedcFaktor})` : '');
+  }
   const scaleEl = document.getElementById('kScale');
   if(scaleEl){
     scaleEl.textContent = (nypris > 0)
