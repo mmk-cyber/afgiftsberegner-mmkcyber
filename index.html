@@ -1824,13 +1824,16 @@ function applyState(state){
   document.getElementById('restRente').value = state.restRente || '3.8';
   setFuelByDisplay(state.fuelDisplay || 'Benzin');
 
-  _set('effektKw', state.effektKw || '');
-  _set('foersteYdelsePct', state.foersteYdelsePct || '');
-  _set('foersteYdelseKr', state.foersteYdelseKr || '');
-  _set('foersteYdelseSlider', state.foersteYdelsePct || '');
-  _set('kmPrAar', state.kmPrAar || '');
-  _set('avancePct', state.avancePct || '');
-  _set('restManuel', state.restManuel || '');
+  // Kun overskriv hvis linket faktisk indeholder feltet. Gamle links (v:1) har dem ikke,
+  // og saa skal siden beholde sine standardvaerdier i stedet for at blive nulstillet.
+  const _setIf = (id, val) => { if(val !== undefined && val !== null && val !== '') _set(id, val); };
+  _setIf('effektKw', state.effektKw);
+  _setIf('foersteYdelsePct', state.foersteYdelsePct);
+  _setIf('foersteYdelseKr', state.foersteYdelseKr);
+  _setIf('foersteYdelseSlider', state.foersteYdelsePct);
+  _setIf('kmPrAar', state.kmPrAar);
+  _setIf('avancePct', state.avancePct);
+  _setIf('restManuel', state.restManuel);
 
   document.getElementById('compBody').innerHTML = '';
   document.getElementById('udstyrBody').innerHTML = '';
